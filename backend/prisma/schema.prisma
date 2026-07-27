@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?  // null if user only ever used OAuth
+  name         String?
+  avatarUrl    String?
+  provider     String   @default("local") // "local" | "google"
+  providerId   String?  // google sub id, for OAuth users
+  refreshTokens RefreshToken[]
+  memberships  Membership[] // a user can belong to (and own) more than one workspace
+  apiKeys      ApiKey[]
+
+  emailVerified        Boolean   @default(false)
+  verificationToken    String?   @unique
+  verificationExpires  DateTime?
+  resetToken           String?   @unique
+  resetExpires         DateTime?
+
+  plan                 Plan      @default(FREE)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Organization {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  logoUrl       String?
+  industry      String?
+  companySize   String?
+  website       String?
+  country       String?
+  timeZone      String?
+  businessEmail String?
+  plan          Plan     @default(FREE)
+  memberships   Membership[]
+  assistant     Assistant?
+  apiKeys ApiKey[]
+  analyticsEvents AnalyticsEvent[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+// One AI Assistant configuration per workspace - shapes how the chat
+// actually behaves (tone, language, what it's meant to help with).
+model Assistant {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       @default("Relay AI")
+  purposes       String[]     @default([])
+  preferredModel String       @default("Auto (free fallback chain)")
+  responseStyle  String       @default("Friendly")
+  language       String       @default("English")
+  welcomeMessage String       @default("Hello! How can I help you today?")
+  systemPrompt   String?      // null = auto-generated from the fields above
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Join table between User and Organization. This - not a field directly on
+// User - is what supports one person owning/joining multiple workspaces.
+model Membership {
+  id             String       @id @default(uuid())
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           Role         @default(OWNER)
+  createdAt      DateTime     @default(now())
+
+  @@unique([userId, organizationId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+
+  CHAT_OPENED
+
+  CHAT_CLOSED
+
+  MESSAGE_SENT
+
+  MESSAGE_RECEIVED
+
+  HELPFUL_CLICKED
+
+  PURCHASE
+
+  LEAD_GENERATED
+
+  BUTTON_CLICKED
+
+  FILE_UPLOADED
+
+  KNOWLEDGE_FAILED
+
+  HUMAN_HANDOFF
+}
+
+model DebugLog {
+  id          String   @id @default(cuid())
+
+  level       String
+
+  action      String
+
+  endpoint    String?
+
+  method      String?
+
+  statusCode  Int?
+
+  message     String
+
+  userId      String?
+
+  workspaceId String?
+
+  createdAt   DateTime @default(now())
+}
+
+model ApiKey {
+  id        String   @id @default(uuid())
+
+  name      String
+
+  prefix    String
+
+  hashedKey String   @unique
+
+  lastUsed  DateTime?
+
+  revoked   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  organizationId String @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdById String
+  createdBy   User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+}
+
+model AnalyticsEvent {
+  id             String   @id @default(uuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  visitorId      String
+
+  sessionId      String
+
+  event          AnalyticsEventType
+
+  page           String?
+
+  metadata       Json?
+
+  createdAt      DateTime @default(now())
+}

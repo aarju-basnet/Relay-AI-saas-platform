@@ -16,13 +16,11 @@ const router = Router();
 function getSeatCap(plan: string): number {
   switch (plan) {
     case "PRO":
-      return 25;
-
+      return 50;
     case "ENTERPRISE":
       return Infinity;
-
     default:
-      return 5;
+      return 2;
   }
 }
 
@@ -77,7 +75,7 @@ router.get(
             name: true,
             email: true,
             avatarUrl: true,
-            passwordHash: true,
+             invitePending: true,
             plan: true,
           },
         },
@@ -110,9 +108,7 @@ router.get(
 
         joinedAt: member.createdAt,
 
-        status: member.user.passwordHash
-          ? "active"
-          : "pending",
+          status: member.user.invitePending ? "pending" : "active",
       })),
     });
   }
@@ -234,25 +230,22 @@ router.post(
       Date.now() + 7 * 24 * 60 * 60 * 1000
     );
 
-    const member = await prisma.user.create({
-      data: {
-        email,
-        name,
-
-        emailVerified: true,
-
-        resetToken: inviteToken,
-        resetExpires: expires,
-
-        memberships: {
-          create: {
-            organizationId: workspace.id,
-            role: "MEMBER",
-          },
-        },
+   const member = await prisma.user.create({
+  data: {
+    email,
+    name,
+    emailVerified: true,
+    invitePending: true,
+    resetToken: inviteToken,
+    resetExpires: expires,
+    memberships: {
+      create: {
+        organizationId: workspace.id,
+        role: "MEMBER",
       },
-    });
-
+    },
+  },
+});
     /* ---------------------------------------------------- */
     /* Send invitation email                                */
     /* ---------------------------------------------------- */
@@ -464,7 +457,7 @@ router.delete(
           user: {
             select: {
               id: true,
-              passwordHash: true,
+              invitePending: true,
               email: true,
               name: true,
             },
@@ -520,17 +513,12 @@ router.delete(
     /* Pending Invite                                             */
     /* ---------------------------------------------------------- */
 
-    if (!targetMembership.user.passwordHash) {
-      await prisma.user.delete({
-        where: {
-          id: targetMembership.user.id,
-        },
-      });
-
-      return res.json({
-        message: "Pending invitation deleted.",
-      });
-    }
+   if (targetMembership.user.invitePending) {
+  await prisma.user.delete({
+    where: { id: targetMembership.user.id },
+  });
+  return res.json({ message: "Pending invitation deleted." });
+}
 
     /* ---------------------------------------------------------- */
     /* Active Member                                              */

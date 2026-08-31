@@ -3,6 +3,7 @@ import { prisma } from "@/config/postgres";
 export interface CurrentMembership {
   organizationId: string;
   organizationName: string;
+  organizationLogoUrl: string | null;
   role: "OWNER" | "ADMIN" | "MEMBER";
 }
 
@@ -15,7 +16,7 @@ export interface CurrentMembership {
 export async function getCurrentMembership(userId: string): Promise<CurrentMembership | null> {
   const membership = await prisma.membership.findFirst({
     where: { userId },
-    include: { organization: { select: { id: true, name: true } } },
+    include: { organization: { select: { id: true, name: true, logoUrl: true } } },
     orderBy: { createdAt: "asc" },
   });
 
@@ -24,6 +25,7 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   return {
     organizationId: membership.organizationId,
     organizationName: membership.organization.name,
+    organizationLogoUrl: membership.organization.logoUrl,
     role: membership.role as "OWNER" | "ADMIN" | "MEMBER",
   };
 }

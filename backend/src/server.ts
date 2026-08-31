@@ -21,21 +21,35 @@ import advancedRoutes from "@/routes/Advanced.routes";
 import developerRoutes from "./routes/Developer.routes";
 import { debugLogger } from "@/middleware/debugLogger.middleware";
 import apiKeyRoutes from "./routes/apiKey.routes";
+import widgetRoutes from "@/routes/widget.routes";
+import teamChatRoutes from "@/routes/teamChat.routes";
 
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // --- Global middleware ---
-app.use(helmet());
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "img-src": ["'self'", "data:", "https:"],
+      },
+    },
+  })
+);
+
+// Widget routes: open CORS — any business site can embed the widget.
+
+
 
 // Stripe webhooks MUST be mounted with a raw body parser, and BEFORE
 // express.json() below - Stripe's signature check needs the exact raw
 // bytes of the request body, which JSON parsing would otherwise destroy.
 app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoutes);
 
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 app.use(passport.initialize());
 app.use(debugLogger);
@@ -49,6 +63,12 @@ app.use(
   })
 );
 
+
+app.use("/api/widget", cors(), widgetRoutes);
+
+// Global CORS restriction applied to all remaining routes below
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+
 // --- Routes ---
 app.use("/api/auth", authRoutes);
 app.use("/api/llm", llmRoutes);
@@ -61,7 +81,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/advanced", advancedRoutes);
 app.use( "/api/developer", developerRoutes);
 app.use( "/api/api-keys",apiKeyRoutes);
-
+app.use("/api/team-chat", teamChatRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", redis: redis.status });

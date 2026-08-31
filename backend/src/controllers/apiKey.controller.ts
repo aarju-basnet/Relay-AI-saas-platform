@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { randomBytes } from "crypto";
-
+import { generateApiKey, hashApiKey, getPrefix } from "@/utils/apiKey";
 import { prisma } from "@/config/postgres";
 import { AuthRequest } from '@/middleware/auth';
 import { getMembership } from "@/utils/organization";
@@ -63,20 +63,20 @@ export async function createApiKey(
       });
     }
 
-    const existingKey =
-      await prisma.apiKey.findUnique({
-        where: {
-          organizationId,
-        },
-      });
+  // UPDATE THIS BLOCK in createApiKey:
+//const existingKey = await prisma.apiKey.findFirst({
+ // where: {
+   // organizationId,
+   // revoked: false, // <-- Only block if an ACTIVE key currently exists
+ // },
+//});
 
-    if (existingKey) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "This business already has an API Key.",
-      });
-    }
+//if (existingKey) {
+ // return res.status(400).json({
+   // success: false,
+   // message: "This business already has an active API Key. Revoke it before generating a new one.",
+ // });
+//}
 
     const apiKey = generateApiKey();
 
@@ -111,6 +111,7 @@ export async function createApiKey(
   }
 }
 
+
 export async function getApiKeys(
   req: AuthRequest,
   res: Response
@@ -141,7 +142,13 @@ export async function getApiKeys(
       orderBy: {
         createdAt: "desc",
       },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        prefix: true,
+        revoked: true,
+        createdAt: true,
+        lastUsed: true,
         createdBy: {
           select: {
             id: true,

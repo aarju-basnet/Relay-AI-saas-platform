@@ -69,7 +69,12 @@ async function serializeUser(user: {
     plan: user.plan,
     avatarUrl: user.avatarUrl,
     workspace: membership
-      ? { id: membership.organizationId, name: membership.organizationName, role: membership.role }
+      ? {
+          id: membership.organizationId,
+          name: membership.organizationName,
+          logoUrl: membership.organizationLogoUrl,
+          role: membership.role,
+        }
       : null,
   };
 }
@@ -132,6 +137,13 @@ router.post("/login", async (req: Request, res: Response) => {
   await prisma.refreshToken.create({
     data: { token: refreshToken, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
   });
+
+   if (user.invitePending) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { invitePending: false },
+    });
+  }
 
   setAuthCookies(res, accessToken, refreshToken);
   res.json({ user: await serializeUser(user) });
@@ -235,6 +247,13 @@ router.get(
     await prisma.refreshToken.create({
       data: { token: refreshToken, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
     });
+
+    if (user.invitePending) {
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { invitePending: false },
+  });
+}
 
     setAuthCookies(res, accessToken, refreshToken);
     // Frontend checks the user's workspace status on load and routes to

@@ -31,6 +31,7 @@ model User {
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+   invitePending Boolean @default(false)
 }
 
 model Organization {
@@ -44,6 +45,7 @@ model Organization {
   country       String?
   timeZone      String?
   businessEmail String?
+   payments Payment[]
   plan          Plan     @default(FREE)
   memberships   Membership[]
   assistant     Assistant?
@@ -108,28 +110,34 @@ enum Plan {
 
 enum AnalyticsEventType {
   PAGE_VIEW
-
+  SESSION_STARTED
+  SESSION_ENDED
+  CHAT_WIDGET_LOADED
   CHAT_OPENED
-
   CHAT_CLOSED
-
   MESSAGE_SENT
-
   MESSAGE_RECEIVED
-
   HELPFUL_CLICKED
-
   PURCHASE
-
   LEAD_GENERATED
-
   BUTTON_CLICKED
-
   FILE_UPLOADED
-
   KNOWLEDGE_FAILED
-
   HUMAN_HANDOFF
+}
+
+model Payment {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  gateway        String       // "ESEWA" | "KHALTI"
+  transactionId  String       @unique // transaction_uuid for eSewa, pidx for Khalti
+  amountNpr      Int
+  interval       String       // "MONTHLY" | "YEARLY"
+  status         String       @default("PENDING") // PENDING | COMPLETED | FAILED
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
 model DebugLog {
@@ -168,8 +176,7 @@ model ApiKey {
   revoked   Boolean  @default(false)
 
   createdAt DateTime @default(now())
-
-  organizationId String @unique
+organizationId String  
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdById String

@@ -11,5 +11,5 @@ export function hashApiKey(key: string) {
 }
 
 export function getPrefix(key: string) {
-  return key.substring(0, 12);
+  return key.substring(0, 20);
 }

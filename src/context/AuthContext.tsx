@@ -3,12 +3,17 @@ import { api, ApiError, User } from "@/lib/api";
 
 interface AuthContextValue {
   user: User | null;
+    developerMode: boolean;
+  setDeveloperMode: React.Dispatch<
+    React.SetStateAction<boolean>
+  >;
   loading: boolean;
   initializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  createWorkspace: (name: string, industry?: string, companySize?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -17,20 +22,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [developerMode, setDeveloperMode] = useState(false);
 
   // On first load, try to restore the session from the access-token cookie.
   useEffect(() => {
-    api
-      .getMe()
-      .then(({ user }) => setUser(user))
-      .catch((err) => {
-        // 401 just means "not logged in" - not an error worth surfacing
-        if (!(err instanceof ApiError) || err.status !== 401) {
-          console.error("Failed to restore session:", err);
-        }
-      })
-      .finally(() => setInitializing(false));
-  }, []);
+  async function restoreSession() {
+    try {
+      const { user } = await api.getMe();
+
+      setUser(user);
+    } catch (err) {
+      if (
+        err instanceof ApiError &&
+        err.status === 401
+      ) {
+        // Both access token and refresh token are invalid.
+        setUser(null);
+      } else {
+        console.error(
+          "Failed to restore session:",
+          err
+        );
+      }
+    } finally {
+      setInitializing(false);
+    }
+  }
+
+  restoreSession();
+}, []);
 
   const login = useCallback(async (email: string, password: string) => {
     setLoading(true);
@@ -68,8 +88,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Page 2 of onboarding - creates the business, then refreshes so
+  // user.workspace is populated and routing unlocks the dashboard.
+  const createWorkspace = useCallback(async (name: string, industry?: string, companySize?: string) => {
+    setLoading(true);
+    try {
+      await api.createWorkspace(name, industry, companySize);
+      await refreshUser();
+    } finally {
+      setLoading(false);
+    }
+  }, [refreshUser]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, initializing, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user,   developerMode,
+    setDeveloperMode, loading, initializing, login, register, logout, refreshUser, createWorkspace }}>
       {children}
     </AuthContext.Provider>
   );

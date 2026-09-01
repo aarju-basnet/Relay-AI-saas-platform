@@ -10,7 +10,7 @@ const MODEL_LABELS: Record<string, string> = {
 
 export function MessageBubble({ message }: { message: Message }) {
   const isUser = message.role === "user";
-  const modelUsed = message.metadata?.modelUsed;
+  const modelUsed = message.metadata?.model;
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>

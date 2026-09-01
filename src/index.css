@@ -34,6 +34,30 @@
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
   --shadow-card: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
   --shadow-raised: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04);
+
+  /* Used by BusinessShowcase.tsx: tab auto-advance timer bar + panel fade-in */
+  --animate-progress: progress 4.5s linear;
+  --animate-fadein: fadein 0.4s ease-out;
+}
+
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
@@ -86,4 +110,146 @@
     @apply bg-surface border border-border rounded-panel;
     box-shadow: var(--shadow-card);
   }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes slideIn {
+
+  from {
+
+    opacity:0;
+
+    transform:translateY(25px);
+
+  }
+
+  to {
+
+    opacity:1;
+
+    transform:translateY(0);
+
+  }
+
+}
+
+@keyframes dashboardShimmer{
+
+0%{
+transform:translateX(-250%);
+}
+
+100%{
+transform:translateX(600%);
+}
+
+}
+
+@keyframes float{
+
+0%,100%{
+transform:translateY(0px);
+}
+
+50%{
+transform:translateY(-8px);
+}
+
+}
+
+@keyframes notificationFloat{
+
+0%,100%{
+transform:translateY(0);
+}
+
+50%{
+transform:translateY(-4px);
+}
+
+}
+
+@keyframes pulseGlow{
+
+0%,100%{
+box-shadow:0 0 0 rgba(200,134,72,.2);
+}
+
+50%{
+box-shadow:0 0 22px rgba(200,134,72,.45);
+}
+
+}
+
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes dashboardShimmer {
+  from {
+    transform: translateX(-200%);
+  }
+  to {
+    transform: translateX(500%);
+  }
+}
+
+@keyframes fadeIn{
+  from{
+    opacity:0;
+    transform:translateY(6px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+@keyframes dashboardShimmer{
+  from{
+    transform:translateX(-180px);
+  }
+  to{
+    transform:translateX(420px);
+  }
+}
+
+@keyframes userPop{
+
+  from{
+    opacity:0;
+    transform:translateY(8px) scale(.7);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+
 }

@@ -6,6 +6,7 @@ import { prisma } from "@/config/postgres";
 import { getCurrentMembership } from "@/utils/membership";
 import { buildDefaultSystemPrompt } from "@/routes/assistant.routes";
 import { generateAIResponse } from "@/services/llm.service";
+import { findRelevantChunks } from "@/utils/retrieval";
 
 const router = Router();
 
@@ -116,30 +117,40 @@ router.post(
       createdAt: new Date(),
     });
 
-    const assistant =
-      await prisma.assistant.findUnique({
+       const [assistant, allChunks] = await Promise.all([
+      prisma.assistant.findUnique({
         where: {
-          organizationId:
-            membership.organizationId,
+          organizationId: membership.organizationId,
         },
-      });
+      }),
+      prisma.knowledgeChunk.findMany({
+        where: {
+          document: {
+            organizationId: membership.organizationId,
+            status: "READY",
+          },
+        },
+        select: { content: true },
+      }),
+    ]);
+
+    const relevantChunks = findRelevantChunks(message, allChunks);
+
+    const knowledgeContext =
+      relevantChunks.length > 0
+        ? `\n\nRelevant business information:\n${relevantChunks
+            .map((c, i) => `[${i + 1}] ${c}`)
+            .join("\n")}\n\nUse this information to answer if relevant. If the answer isn't in the information provided, answer normally using your general knowledge, but don't make up specific facts about this business.`
+        : "";
 
     const systemPrompt =
-      assistant?.systemPrompt ||
-      buildDefaultSystemPrompt({
-        name:
-          assistant?.name ||
-          "Relay AI",
-        purposes:
-          assistant?.purposes ||
-          [],
-        responseStyle:
-          assistant?.responseStyle ||
-          "Friendly",
-        language:
-          assistant?.language ||
-          "English",
-      });
+      (assistant?.systemPrompt ||
+        buildDefaultSystemPrompt({
+          name: assistant?.name || "Relay AI",
+          purposes: assistant?.purposes || [],
+          responseStyle: assistant?.responseStyle || "Friendly",
+          language: assistant?.language || "English",
+        })) + knowledgeContext;
 
     const history: ChatMessage[] = [
       {

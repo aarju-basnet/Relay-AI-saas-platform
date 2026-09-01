@@ -23,6 +23,7 @@ import { debugLogger } from "@/middleware/debugLogger.middleware";
 import apiKeyRoutes from "./routes/apiKey.routes";
 import widgetRoutes from "@/routes/widget.routes";
 import teamChatRoutes from "@/routes/teamChat.routes";
+import knowledgeRoutes from "@/routes/knowledge.routes";
 
 
 const app = express();
@@ -82,6 +83,7 @@ app.use("/api/advanced", advancedRoutes);
 app.use( "/api/developer", developerRoutes);
 app.use( "/api/api-keys",apiKeyRoutes);
 app.use("/api/team-chat", teamChatRoutes);
+app.use("/api/knowledge", knowledgeRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", redis: redis.status });

@@ -241,12 +241,19 @@ function getPlanPriceNpr(interval: "month" | "year"): number {
     : Number(process.env.PRICE_MONTHLY_NPR ?? 999);
 }
 
-async function activateProPlan(userId: string, organizationId: string) {
+async function activateProPlan(
+  userId: string,
+  organizationId: string,
+  interval: "MONTHLY" | "YEARLY"
+) {
+  const days = interval === "YEARLY" ? 365 : 30;
+  const proExpiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { plan: "PRO" } }),
     prisma.organization.update({
       where: { id: organizationId },
-      data: { plan: "PRO" },
+      data: { plan: "PRO", proExpiresAt },
     }),
   ]);
 }
@@ -336,8 +343,11 @@ router.get("/esewa/success", async (req: Request, res: Response) => {
       data: { status: "COMPLETED" },
     });
 
-    await activateProPlan(payment.userId, payment.organizationId);
-
+    await activateProPlan(
+  payment.userId,
+  payment.organizationId,
+  payment.interval as "MONTHLY" | "YEARLY"
+);
     return res.redirect(`${CLIENT_URL}/dashboard?upgraded=true`);
   } catch (err) {
     console.error(err);
@@ -428,7 +438,11 @@ router.get("/khalti/callback", async (req: Request, res: Response) => {
       data: { status: "COMPLETED" },
     });
 
-    await activateProPlan(payment.userId, payment.organizationId);
+    await activateProPlan(
+  payment.userId,
+  payment.organizationId,
+  payment.interval as "MONTHLY" | "YEARLY"
+);
 
     return res.redirect(`${CLIENT_URL}/dashboard?upgraded=true`);
   } catch (err) {

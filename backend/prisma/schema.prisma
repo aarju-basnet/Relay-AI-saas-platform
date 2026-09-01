@@ -53,6 +53,8 @@ model Organization {
   analyticsEvents AnalyticsEvent[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  knowledgeDocuments KnowledgeDocument[]
+  proExpiresAt       DateTime?
 }
 
 // One AI Assistant configuration per workspace - shapes how the chat
@@ -200,4 +202,24 @@ model AnalyticsEvent {
   metadata       Json?
 
   createdAt      DateTime @default(now())
+}
+
+model KnowledgeDocument {
+  id             String              @id @default(uuid())
+  organizationId String
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  fileType       String              // "pdf" | "docx" | "txt"
+  status         String              @default("PROCESSING") // PROCESSING | READY | FAILED
+  chunks         KnowledgeChunk[]
+  createdAt      DateTime            @default(now())
+}
+
+model KnowledgeChunk {
+  id         String            @id @default(uuid())
+  documentId String
+  document   KnowledgeDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  content    String            @db.Text
+  chunkIndex Int
+  createdAt  DateTime          @default(now())
 }

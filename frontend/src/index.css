@@ -1,0 +1,255 @@
+@import "tailwindcss";
+
+/*
+  Relay design tokens - light, professional SaaS look (Stripe/Linear/Notion
+  register) rather than a dark dev-console. Real elevation via shadows,
+  not just borders. Copper stays as the one brand accent; teal marks
+  model-status only, kept deliberately rare so it reads as signal.
+*/
+@theme {
+  --color-canvas: #fafafa; /* page background */
+  --color-surface: #ffffff; /* card/panel background */
+  --color-border: #e5e7eb;
+  --color-border-strong: #d4d7dd;
+
+  --color-ink: #12141a; /* headings, primary text */
+  --color-ink-muted: #5b6472; /* secondary text */
+  --color-ink-faint: #9aa1ac; /* placeholders, timestamps */
+
+  --color-copper: #b8763a; /* deepened for AA contrast on white */
+  --color-copper-bright: #cc8a4b;
+  --color-copper-dim: #f2e2d1; /* light tint for subtle backgrounds */
+
+  --color-teal: #0f9488;
+  --color-teal-dim: #e3f5f3;
+
+  --color-danger: #d64545;
+  --color-danger-dim: #fbe9e9;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-panel: 12px;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-card: 0 1px 3px rgba(16, 24, 40, 0.06), 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-raised: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04);
+
+  /* Used by BusinessShowcase.tsx: tab auto-advance timer bar + panel fade-in */
+  --animate-progress: progress 4.5s linear;
+  --animate-fadein: fadein 0.4s ease-out;
+}
+
+@keyframes progress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes fadein {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+  }
+
+  /* Visible keyboard focus everywhere - accessibility floor, not optional */
+  :focus-visible {
+    outline: 2px solid var(--color-copper);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-copper-dim);
+    color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-copper hover:bg-copper-bright text-white font-medium px-4 py-2.5 rounded-panel transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply bg-surface hover:bg-canvas border border-border text-ink font-medium px-4 py-2.5 rounded-panel transition-colors shadow-sm;
+  }
+
+  .input-field {
+    @apply bg-surface border border-border rounded-panel px-3.5 py-2.5 text-ink placeholder:text-ink-faint focus:border-copper outline-none transition-colors w-full;
+  }
+
+  .panel {
+    @apply bg-surface border border-border rounded-panel;
+    box-shadow: var(--shadow-card);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes progress {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
+@keyframes slideIn {
+
+  from {
+
+    opacity:0;
+
+    transform:translateY(25px);
+
+  }
+
+  to {
+
+    opacity:1;
+
+    transform:translateY(0);
+
+  }
+
+}
+
+@keyframes dashboardShimmer{
+
+0%{
+transform:translateX(-250%);
+}
+
+100%{
+transform:translateX(600%);
+}
+
+}
+
+@keyframes float{
+
+0%,100%{
+transform:translateY(0px);
+}
+
+50%{
+transform:translateY(-8px);
+}
+
+}
+
+@keyframes notificationFloat{
+
+0%,100%{
+transform:translateY(0);
+}
+
+50%{
+transform:translateY(-4px);
+}
+
+}
+
+@keyframes pulseGlow{
+
+0%,100%{
+box-shadow:0 0 0 rgba(200,134,72,.2);
+}
+
+50%{
+box-shadow:0 0 22px rgba(200,134,72,.45);
+}
+
+}
+
+
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes dashboardShimmer {
+  from {
+    transform: translateX(-200%);
+  }
+  to {
+    transform: translateX(500%);
+  }
+}
+
+@keyframes fadeIn{
+  from{
+    opacity:0;
+    transform:translateY(6px);
+  }
+  to{
+    opacity:1;
+    transform:translateY(0);
+  }
+}
+
+@keyframes dashboardShimmer{
+  from{
+    transform:translateX(-180px);
+  }
+  to{
+    transform:translateX(420px);
+  }
+}
+
+@keyframes userPop{
+
+  from{
+    opacity:0;
+    transform:translateY(8px) scale(.7);
+  }
+
+  to{
+    opacity:1;
+    transform:translateY(0) scale(1);
+  }
+
+}

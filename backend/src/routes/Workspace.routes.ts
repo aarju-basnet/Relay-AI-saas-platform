@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg, getAllMembershipsForUser } from "@/utils/membership";
 
 const router = Router();
 
@@ -49,12 +49,29 @@ const createWorkspaceSchema = z.object({
   companySize: z.enum(COMPANY_SIZES).optional(),
 });
 
-// POST /api/workspace - Page 2 of onboarding. Creates the Organization and
-// a Membership linking the current user to it as OWNER.
+const PLAN_ORG_LIMITS: Record<string, number> = {
+  FREE: 2,
+  PRO: 10,
+  ENTERPRISE: Infinity,
+};
+
+// POST /api/workspace - Page 2 of onboarding, or "create another workspace"
+// once multi-workspace exists. Creates the Organization and a Membership
+// linking the current user to it as OWNER, gated by the user's plan limit.
 router.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const existing = await getCurrentMembership(req.auth!.userId);
-  if (existing) {
-    return res.status(400).json({ error: "You already have a workspace. Multi-workspace switching isn't built yet." });
+  const userId = req.auth!.userId;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const existingMemberships = await getAllMembershipsForUser(userId);
+  const ownedCount = existingMemberships.filter((m) => m.role === "OWNER").length;
+  const limit = PLAN_ORG_LIMITS[user.plan] ?? PLAN_ORG_LIMITS.FREE;
+
+  if (ownedCount >= limit) {
+    return res.status(403).json({
+      error: `Your ${user.plan} plan allows up to ${limit} workspace(s). Upgrade to create more.`,
+    });
   }
 
   const parsed = createWorkspaceSchema.safeParse(req.body);
@@ -68,7 +85,7 @@ router.post("/", requireAuth, async (req: AuthRequest, res: Response) => {
       slug,
       industry: parsed.data.industry,
       companySize: parsed.data.companySize,
-      memberships: { create: { userId: req.auth!.userId, role: "OWNER" } },
+      memberships: { create: { userId, role: "OWNER" } },
     },
   });
 
@@ -95,22 +112,24 @@ const updateWorkspaceSchema = z.object({
   timeZone: z.string().optional(),
 });
 
-// GET /api/workspace - current workspace's full settings (Stage 2 fields)
-router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const membership = await getCurrentMembership(req.auth!.userId);
-  if (!membership) return res.status(400).json({ error: "You're not part of a workspace yet" });
+// GET /api/workspace/:organizationId - that workspace's full settings (Stage 2 fields)
+router.get("/:organizationId", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
 
-  const organization = await prisma.organization.findUnique({ where: { id: membership.organizationId } });
+  const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
   if (!organization) return res.status(404).json({ error: "Workspace not found" });
 
   res.json({ workspace: organization });
 });
 
-// PATCH /api/workspace - Stage 2 settings (logo, website, business email, etc).
+// PATCH /api/workspace/:organizationId - Stage 2 settings (logo, website, business email, etc).
 // OWNER or ADMIN only.
-router.patch("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const membership = await getCurrentMembership(req.auth!.userId);
-  if (!membership) return res.status(400).json({ error: "You're not part of a workspace yet" });
+router.patch("/:organizationId", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
   if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
     return res.status(403).json({ error: "Only owners and admins can edit workspace settings" });
   }
@@ -119,11 +138,25 @@ router.patch("/", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const organization = await prisma.organization.update({
-    where: { id: membership.organizationId },
+    where: { id: organizationId },
     data: parsed.data,
   });
 
   res.json({ workspace: organization });
+});
+
+
+router.patch("/:organizationId/analytics-seen", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
+
+  await prisma.organization.update({
+    where: { id: organizationId },
+    data: { analyticsLiveSeen: true },
+  });
+
+  res.json({ success: true });
 });
 
 export default router;

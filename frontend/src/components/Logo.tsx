@@ -1,38 +1,35 @@
 export function Logo({ size = "md" }: { size?: "sm" | "md" }) {
-  const boxSize = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+  const dimension = size === "sm" ? "w-12 h-12" : "w-16 h-16";
   const textSize = size === "sm" ? "text-base" : "text-lg";
 
   return (
     <div className="inline-flex items-center gap-2.5">
-      <div
-        className={`${boxSize} rounded-xl bg-gradient-to-br from-copper-bright to-copper flex items-center justify-center shadow-raised shrink-0`}
-      >
-        <RelayMark className="w-[58%] h-[58%] text-white" />
-      </div>
+      <RelayMark className={`${dimension} shrink-0`} />
       <span className={`${textSize} font-semibold text-ink tracking-tight`}>Relay</span>
     </div>
   );
 }
 
 /**
- * Custom mark: a signal hopping across three nodes, growing stronger and
- * more solid as it lands - literally what the product does (relays a
- * request across models until one answers). Not a stock icon.
+ * Standalone mark - a single filled torch/flame shape, no container,
+ * no wordmark needed to read it. A torch passed hand to hand is
+ * literally what a relay is. Uses currentColor + text-copper so it
+ * always matches Relay's signature color (forest green) defined once
+ * in index.css, rather than a separately hardcoded hex that could
+ * drift out of sync if the brand color changes again later.
  */
 export function RelayMark({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+    <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg" className={`text-copper ${className ?? ""}`}>
       <path
-        d="M4 17.5C4 17.5 7.2 8.5 12 12C16.8 15.5 20 6.5 20 6.5"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        opacity="0.55"
+        d="M45 8 C62 28 68 45 62 60 C58 72 47 80 45 88 C43 80 32 72 28 60 C22 45 28 28 45 8 Z"
+        fill="currentColor"
       />
-      <circle cx="4" cy="17.5" r="1.8" fill="currentColor" opacity="0.45" />
-      <circle cx="12" cy="12" r="2.1" fill="currentColor" opacity="0.75" />
-      <circle cx="20" cy="6.5" r="2.6" fill="currentColor" />
+      <path
+        d="M42 20 C50 32 53 42 50 52 C48 60 43 66 42 72 C41 66 36 60 34 52 C31 42 34 32 42 20 Z"
+        fill="white"
+        opacity="0.35"
+      />
     </svg>
   );
 }

@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError, TeamMember } from "@/lib/api";
 
 export default function Team() {
-  const { user } = useAuth();
+ const { user, activeWorkspace } = useAuth();
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [seatCap, setSeatCap] = useState(2);
@@ -25,8 +25,8 @@ export default function Team() {
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
   const canManage =
-    user?.workspace?.role === "OWNER" || user?.workspace?.role === "ADMIN";
-  const isOwner = user?.workspace?.role === "OWNER";
+  activeWorkspace?.role === "OWNER" || activeWorkspace?.role === "ADMIN";
+const isOwner = activeWorkspace?.role === "OWNER";
 
   const seatsUsed = members.length;
   const seatsFull = seatsUsed >= seatCap;
@@ -93,7 +93,7 @@ export default function Team() {
   }
 
   return (
-    <div className="w-full h-full min-h-screen bg-white text-ink p-8 space-y-6">
+    <div className="w-full h-full min-h-screen bg-white dark:bg-canvas text-ink p-8 space-y-6">
       {/* ── HEADER + SEAT USAGE ── */}
       <div className="flex items-center justify-between">
         <div>
@@ -103,13 +103,13 @@ export default function Team() {
           </p>
         </div>
 
-        <div className="rounded-xl border border-border bg-white px-4 py-3 min-w-[110px]">
+        <div className="rounded-xl border border-border bg-white dark:bg-surface px-4 py-3 min-w-[110px]">
           <p className="text-[10px] uppercase text-ink-faint">Seats</p>
           <p className="text-sm font-semibold text-ink mt-0.5">
             {seatsUsed} / {seatCap === Infinity ? "∞" : seatCap}
           </p>
           {seatCap !== Infinity && (
-            <div className="h-1 w-full rounded-full bg-gray-100 overflow-hidden mt-1.5">
+            <div className="h-1 w-full rounded-full bg-gray-100 dark:bg-border overflow-hidden mt-1.5">
               <div
                 className={`h-full rounded-full transition-all ${
                   seatsFull ? "bg-red-500" : "bg-copper"
@@ -123,20 +123,20 @@ export default function Team() {
 
       {/* ── INVITE CARD ── */}
       {canManage && (
-        <div className="rounded-2xl border border-border bg-white p-5 shadow-sm">
+        <div className="rounded-2xl border border-border bg-white dark:bg-surface p-5 shadow-sm">
           <div className="flex items-center gap-2 mb-5">
             <UserPlus size={16} className="text-copper" />
             <h2 className="text-sm font-semibold text-ink">Invite Team Member</h2>
           </div>
 
           {inviteError && (
-            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+            <div className="mb-4 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 px-3 py-2 text-xs text-red-600 dark:text-red-400">
               {inviteError}
             </div>
           )}
 
           {inviteSuccess && (
-            <div className="mb-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-xs text-green-700">
+            <div className="mb-4 rounded-xl border border-green-200 dark:border-green-900 bg-green-50 dark:bg-green-950/30 px-3 py-2 text-xs text-green-700 dark:text-green-400">
               Invite sent. They'll receive a secure link to set up their account.
             </div>
           )}
@@ -159,7 +159,7 @@ export default function Team() {
                   type="text"
                   value={inviteName}
                   onChange={(e) => setInviteName(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-copper/30"
+                  className="w-full rounded-lg border border-border bg-white dark:bg-canvas px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-copper/30"
                   placeholder="John Doe"
                 />
               </div>
@@ -173,7 +173,7 @@ export default function Team() {
                   required
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-white px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-copper/30"
+                  className="w-full rounded-lg border border-border bg-white dark:bg-canvas px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-copper/30"
                   placeholder="john@example.com"
                 />
               </div>
@@ -204,8 +204,8 @@ export default function Team() {
       )}
 
       {/* ── TEAM MEMBERS TABLE ── */}
-      <div className="rounded-2xl border border-border bg-white shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border px-5 py-4 bg-white">
+      <div className="rounded-2xl border border-border bg-white dark:bg-surface shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4 bg-white dark:bg-surface">
           <div className="flex items-center gap-2">
             <Users size={16} className="text-copper" />
             <h2 className="text-sm font-semibold text-ink">Team Members</h2>
@@ -216,12 +216,12 @@ export default function Team() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-16 bg-white">
+          <div className="flex justify-center py-16 bg-white dark:bg-surface">
             <Loader2 className="animate-spin text-copper" size={22} />
           </div>
         ) : (
-          <table className="w-full bg-white">
-            <thead className="bg-white border-b border-border">
+          <table className="w-full bg-white dark:bg-surface">
+            <thead className="bg-white dark:bg-surface border-b border-border">
               <tr className="text-[11px] uppercase tracking-wide text-ink-faint">
                 <th className="px-5 py-3 text-left">Member</th>
                 <th className="px-5 py-3 text-left">Role</th>
@@ -231,11 +231,11 @@ export default function Team() {
               </tr>
             </thead>
 
-            <tbody className="bg-white">
+            <tbody className="bg-white dark:bg-surface">
               {members.map((member) => (
                 <tr
                   key={member.id}
-                  className="border-b border-border hover:bg-gray-50/50 transition"
+                  className="border-b border-border hover:bg-gray-50/50 dark:hover:bg-canvas/50 transition"
                 >
                   {/* MEMBER */}
                   <td className="px-5 py-4">
@@ -268,7 +268,7 @@ export default function Team() {
                         onChange={(e) =>
                           handleRoleChange(member.id, e.target.value as "ADMIN" | "MEMBER")
                         }
-                        className="rounded-lg border border-border bg-white px-2 py-1 text-[11px] outline-none"
+                        className="rounded-lg border border-border bg-white dark:bg-canvas text-ink px-2 py-1 text-[11px] outline-none"
                       >
                         <option value="MEMBER">Member</option>
                         <option value="ADMIN">Admin</option>
@@ -279,12 +279,12 @@ export default function Team() {
                         Owner
                       </span>
                     ) : member.role === "ADMIN" ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-1 text-[11px] font-medium text-blue-600">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 px-2 py-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
                         <Shield size={11} />
                         Admin
                       </span>
                     ) : (
-                      <span className="inline-flex items-center rounded-full bg-gray-50 border border-border px-2 py-1 text-[11px] font-medium text-ink-muted">
+                      <span className="inline-flex items-center rounded-full bg-gray-50 dark:bg-canvas border border-border px-2 py-1 text-[11px] font-medium text-ink-muted">
                         Member
                       </span>
                     )}
@@ -293,11 +293,11 @@ export default function Team() {
                   {/* STATUS */}
                   <td className="px-5 py-4">
                     {member.status === "active" ? (
-                      <span className="rounded-full bg-green-50 border border-green-200 px-2 py-1 text-[11px] font-medium text-green-700">
+                      <span className="rounded-full bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 px-2 py-1 text-[11px] font-medium text-green-700 dark:text-green-400">
                         Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-50 border border-amber-200 px-2 py-1 text-[11px] font-medium text-amber-700">
+                      <span className="rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 px-2 py-1 text-[11px] font-medium text-amber-700 dark:text-amber-400">
                         Invited
                       </span>
                     )}
@@ -320,7 +320,7 @@ export default function Team() {
                       {isOwner && member.role === "MEMBER" && member.id !== user?.id && (
                         <button
                           onClick={() => handleRoleChange(member.id, "ADMIN")}
-                          className="rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-1 text-[11px] transition"
+                          className="rounded-lg bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-950/50 text-blue-600 dark:text-blue-400 px-3 py-1 text-[11px] transition"
                         >
                           Make Admin
                         </button>
@@ -329,7 +329,7 @@ export default function Team() {
                       {isOwner && member.role === "ADMIN" && (
                         <button
                           onClick={() => handleRoleChange(member.id, "MEMBER")}
-                          className="rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-700 px-3 py-1 text-[11px] transition"
+                          className="rounded-lg bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-950/50 text-amber-700 dark:text-amber-400 px-3 py-1 text-[11px] transition"
                         >
                           Remove Admin
                         </button>
@@ -338,7 +338,7 @@ export default function Team() {
                       {canManage && member.role !== "OWNER" && member.id !== user?.id && (
                         <button
                           onClick={() => handleRemove(member.id)}
-                          className="rounded-lg bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 text-[11px] transition"
+                          className="rounded-lg bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 text-red-600 dark:text-red-400 px-3 py-1 text-[11px] transition"
                         >
                           Remove
                         </button>

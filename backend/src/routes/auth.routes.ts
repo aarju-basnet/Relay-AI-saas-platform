@@ -7,7 +7,10 @@ import { prisma } from "@/config/postgres";
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "@/utils/jwt";
 import { sendVerificationEmail, sendPasswordResetEmail } from "@/utils/email";
-import { getCurrentMembership } from "@/utils/membership";
+import { getAllMembershipsForUser } from "@/utils/membership";
+import { verifyTwoFactorToken } from "@/utils/twoFactor";
+import { isNewDevice } from "@/utils/deviceCheck";
+import { sendNewDeviceLoginAlert } from "@/utils/email";
 
 const router = Router();
 
@@ -49,6 +52,13 @@ function setAuthCookies(
   });
 }
 
+
+function getRequestMeta(req: Request) {
+  return {
+    userAgent: req.headers["user-agent"] ?? null,
+    ipAddress: req.ip ?? null,
+  };
+}
 // Shared shape for every endpoint that returns a user, including whether
 // they've completed workspace setup yet (frontend uses this to route
 // between onboarding and the dashboard).
@@ -60,7 +70,7 @@ async function serializeUser(user: {
   plan: string;
   avatarUrl: string | null;
 }) {
-  const membership = await getCurrentMembership(user.id);
+  const memberships = await getAllMembershipsForUser(user.id);
   return {
     id: user.id,
     email: user.email,
@@ -68,14 +78,12 @@ async function serializeUser(user: {
     emailVerified: user.emailVerified,
     plan: user.plan,
     avatarUrl: user.avatarUrl,
-    workspace: membership
-      ? {
-          id: membership.organizationId,
-          name: membership.organizationName,
-          logoUrl: membership.organizationLogoUrl,
-          role: membership.role,
-        }
-      : null,
+    workspaces: memberships.map((m) => ({
+      id: m.organizationId,
+      name: m.organizationName,
+      logoUrl: m.organizationLogoUrl,
+      role: m.role,
+    })),
   };
 }
 
@@ -86,7 +94,8 @@ router.post("/register", async (req: Request, res: Response) => {
   const parsed = credentialsSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { email, password, name } = parsed.data;
+  const email = parsed.data.email.toLowerCase();
+const { password, name } = parsed.data;
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) return res.status(409).json({ error: "Email already registered" });
 
@@ -110,8 +119,13 @@ router.post("/register", async (req: Request, res: Response) => {
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
-  await prisma.refreshToken.create({
-    data: { token: refreshToken, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+    await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS),
+      ...getRequestMeta(req),
+    },
   });
 
   setAuthCookies(res, accessToken, refreshToken);
@@ -123,20 +137,74 @@ router.post("/login", async (req: Request, res: Response) => {
   const parsed = credentialsSchema.omit({ name: true }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
-  const { email, password } = parsed.data;
+ const email = parsed.data.email.toLowerCase();
+const { password } = parsed.data;
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user || !user.passwordHash) return res.status(401).json({ error: "Invalid credentials" });
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) return res.status(401).json({ error: "Invalid credentials" });
 
+    if (user.twoFactorEnabled) {
+    const { twoFactorToken } = req.body as { twoFactorToken?: string };
+
+    if (!twoFactorToken) {
+      return res.status(200).json({ requiresTwoFactor: true });
+    }
+
+    const isBackupCode = user.twoFactorBackupCodes.includes(twoFactorToken);
+   const isValidTotp =
+  user.twoFactorSecret &&
+  (await verifyTwoFactorToken(twoFactorToken, user.twoFactorSecret));
+    if (!isBackupCode && !isValidTotp) {
+      return res.status(401).json({ error: "Invalid verification code." });
+    }
+
+    if (isBackupCode) {
+      // Backup codes are single-use — remove it once consumed.
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          twoFactorBackupCodes: user.twoFactorBackupCodes.filter(
+            (c) => c !== twoFactorToken
+          ),
+        },
+      });
+    }
+  }
+  const { userAgent, ipAddress } = getRequestMeta(req);
+const newDevice = await isNewDevice(user.id, userAgent);
+
   const payload = { userId: user.id };
   const accessToken = signAccessToken(payload);
   const refreshToken = signRefreshToken(payload);
 
-  await prisma.refreshToken.create({
-    data: { token: refreshToken, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
+    await prisma.refreshToken.create({
+    data: {
+      token: refreshToken,
+      userId: user.id,
+      expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS),
+      ...getRequestMeta(req),
+    },
+  })
+
+  if (newDevice) {
+  await prisma.notification.create({
+    data: {
+      userId: user.id,
+      type: "NEW_DEVICE_LOGIN",
+      message: user.twoFactorEnabled
+        ? `New sign-in from ${userAgent ?? "an unknown device"}.`
+        : `New sign-in from ${userAgent ?? "an unknown device"}. Consider enabling two-factor authentication for extra security.`,
+    },
   });
+
+  try {
+    await sendNewDeviceLoginAlert(user.email, { userAgent, ipAddress, time: new Date() });
+  } catch (err) {
+    console.error("Failed to send new-device alert email:", err);
+  }
+}
 
    if (user.invitePending) {
     await prisma.user.update({
@@ -244,9 +312,35 @@ router.get(
     const accessToken = signAccessToken(payload);
     const refreshToken = signRefreshToken(payload);
 
+    const { userAgent, ipAddress } = getRequestMeta(req);
+const newDevice = await isNewDevice(user.id, userAgent);
+
     await prisma.refreshToken.create({
-      data: { token: refreshToken, userId: user.id, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) },
-    });
+    data: {
+      token: refreshToken,
+      userId: user.id,
+     expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS),
+      ...getRequestMeta(req),
+    },
+  })
+  
+  if (newDevice) {
+  await prisma.notification.create({
+    data: {
+      userId: user.id,
+      type: "NEW_DEVICE_LOGIN",
+      message: user.twoFactorEnabled
+        ? `New sign-in from ${userAgent ?? "an unknown device"}.`
+        : `New sign-in from ${userAgent ?? "an unknown device"}. Consider enabling two-factor authentication for extra security.`,
+    },
+  });
+
+  try {
+    await sendNewDeviceLoginAlert(user.email, { userAgent, ipAddress, time: new Date() });
+  } catch (err) {
+    console.error("Failed to send new-device alert email:", err);
+  }
+}
 
     if (user.invitePending) {
   await prisma.user.update({

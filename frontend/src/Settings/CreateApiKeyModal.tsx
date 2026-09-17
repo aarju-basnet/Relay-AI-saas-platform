@@ -5,18 +5,37 @@ interface CreateApiKeyModalProps {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string) => Promise<void>;
+  keyType: "ANALYTICS" | "ASSISTANT";
 }
+
+const KEY_TYPE_COPY = {
+  ANALYTICS: {
+    title: "Create Business Analytics API Key",
+    subtitle: "Generate a new key for tracking website analytics.",
+    infoText:
+      "This key lets your embedded widget report visitor analytics (page views, sessions, clicks) to your Relay dashboard. It does not enable the AI chat assistant.",
+  },
+  ASSISTANT: {
+    title: "Create AI Assistant API Key",
+    subtitle: "Generate a new key for the Relay AI chat widget.",
+    infoText:
+      "This key powers the AI chat bubble on your website, answering visitors using your uploaded business documents. It's only available on the Pro plan.",
+  },
+};
 
 export default function CreateApiKeyModal({
   open,
   onClose,
   onCreate,
+  keyType,
 }: CreateApiKeyModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
 
   if (!open) return null;
+
+  const copy = KEY_TYPE_COPY[keyType];
 
   async function handleGenerate() {
     if (!name.trim()) return;
@@ -50,11 +69,11 @@ export default function CreateApiKeyModal({
             <div>
 
               <h2 className="text-lg font-semibold">
-                Create API Key
+                {copy.title}
               </h2>
 
               <p className="text-xs text-ink-muted mt-1">
-                Generate a new Relay AI API key.
+                {copy.subtitle}
               </p>
 
             </div>
@@ -108,9 +127,8 @@ export default function CreateApiKeyModal({
           <div className="rounded-xl border border-copper/20 bg-copper/5 p-4">
 
             <p className="text-xs leading-6 text-ink-muted">
-              API Keys allow external applications to securely communicate
-              with your Relay AI assistant. The key will only be shown once
-              after creation — store it safely.
+              {copy.infoText} The key will only be shown once after creation —
+              store it safely.
             </p>
 
           </div>

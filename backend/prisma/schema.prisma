@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -24,7 +25,7 @@ model User {
   verificationExpires  DateTime?
   resetToken           String?   @unique
   resetExpires         DateTime?
-
+lastActiveAt DateTime?
   plan                 Plan      @default(FREE)
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
@@ -32,6 +33,11 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
    invitePending Boolean @default(false)
+   twoFactorEnabled Boolean @default(false)
+   twoFactorSecret String?
+    twoFactorBackupCodes String[] @default([])
+    notifications Notification[]
+    notificationsMuted Boolean @default(false)
 }
 
 model Organization {
@@ -55,7 +61,19 @@ model Organization {
   updatedAt     DateTime @updatedAt
   knowledgeDocuments KnowledgeDocument[]
   proExpiresAt       DateTime?
+  developerMode Boolean @default(false)
+debugLogs     Boolean @default(false)
+apiAccess     Boolean @default(false)
+customPrompt  Boolean @default(false)
+analyticsLive       Boolean  @default(false)
+  analyticsLiveSeen   Boolean  @default(false)
 }
+
+enum ApiKeyType {
+  ANALYTICS
+  ASSISTANT
+}
+
 
 // One AI Assistant configuration per workspace - shapes how the chat
 // actually behaves (tone, language, what it's meant to help with).
@@ -96,6 +114,8 @@ model RefreshToken {
   expiresAt DateTime
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
+  userAgent String?
+  ipAddress String?
 }
 
 enum Role {
@@ -183,6 +203,7 @@ organizationId String
 
   createdById String
   createdBy   User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  type ApiKeyType @default(ANALYTICS)
 }
 
 model AnalyticsEvent {
@@ -202,6 +223,7 @@ model AnalyticsEvent {
   metadata       Json?
 
   createdAt      DateTime @default(now())
+   keySource ApiKeyType @default(ANALYTICS)
 }
 
 model KnowledgeDocument {
@@ -222,4 +244,18 @@ model KnowledgeChunk {
   content    String            @db.Text
   chunkIndex Int
   createdAt  DateTime          @default(now())
+}
+
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // e.g. "NEW_DEVICE_LOGIN"
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
 }

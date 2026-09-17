@@ -1,7 +1,7 @@
 import { Response } from "express";
 
 import { AuthRequest } from "@/middleware/auth";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 import {
   generateAnalyticsSummary,
@@ -17,20 +17,18 @@ export async function getAnalyticsAISummary(
 ) {
   try {
     const userId = req.auth!.userId;
+    const { organizationId } = req.params;
 
     const membership =
-      await getCurrentMembership(userId);
+      await getMembershipForOrg(userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         success: false,
         message:
-          "You're not part of a workspace yet.",
+          "You don't have access to this workspace.",
       });
     }
-
-    const organizationId =
-      membership.organizationId;
 
     // -----------------------------------------
     // Today's analytics

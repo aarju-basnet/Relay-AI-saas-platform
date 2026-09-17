@@ -15,19 +15,19 @@ import {
 const router = Router();
 
 router.get(
-  "/",
+  "/:organizationId",
   requireAuth,
   getDashboardAnalytics
 );
 
 router.get(
-  "/timeline",
+  "/:organizationId/timeline",
   requireAuth,
   getAnalyticsTimeline
 );
 
 router.get(
-  "/ai-summary",
+  "/:organizationId/ai-summary",
   requireAuth,
   getAnalyticsAISummary
 );

@@ -9,7 +9,6 @@ import {
 } from "@/services/analyticsService";
 
 import {
-  ArrowLeft,
   Users,
   Activity,
   Eye,
@@ -20,9 +19,6 @@ import {
   ShoppingCart,
   Bot,
 } from "lucide-react";
-
-import { Link } from "react-router-dom";
-import { Logo } from "@/components/Logo";
 
 interface DashboardAnalytics {
   visitors: number;
@@ -37,20 +33,11 @@ interface DashboardAnalytics {
 }
 
 export default function Analytics() {
-  const [data, setData] =
-    useState<DashboardAnalytics | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const [timeline, setTimeline] =
-    useState<AnalyticsTimelineItem[]>([]);
-
-  const [aiSummary, setAiSummary] =
-    useState<AnalyticsAISummary | null>(null);
+  const [data, setData] = useState<DashboardAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeline, setTimeline] = useState<AnalyticsTimelineItem[]>([]);
+  const [aiSummary, setAiSummary] = useState<AnalyticsAISummary | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -58,118 +45,83 @@ export default function Analytics() {
       getAnalyticsTimeline(),
       getAnalyticsAISummary(),
     ])
-      .then(
-        ([
-          analytics,
-          timelineData,
-          summaryData,
-        ]) => {
-          setData(analytics);
-          setTimeline(timelineData);
-          setAiSummary(summaryData);
-        }
-      )
+      .then(([analytics, timelineData, summaryData]) => {
+        setData(analytics);
+        setTimeline(timelineData);
+        setAiSummary(summaryData);
+      })
       .catch((error) => {
         console.error(error);
-
-        setError(
-          "Couldn't load analytics right now."
-        );
+        setError("Couldn't load analytics right now.");
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
-    return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <header className="border-b border-border">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Logo />
+  return (
+    <div className="flex flex-col h-full bg-canvas bg-white text-ink -m-6 p-6">
+      {/* Page Header */}
+      <div className="border-b border-border px-6 py-4">
+        <h1 className="text-xl font-semibold">Business Analytics</h1>
+        <p className="text-xs text-ink-muted mt-1">
+          See how visitors interact with your business website.
+        </p>
+      </div>
 
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-sm text-ink-muted hover:text-ink"
-          >
-            <ArrowLeft size={16} />
-            Back to chat
-          </Link>
-        </div>
-      </header>
-
-      <main className="max-w-6xl mx-auto px-6 py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold">
-            Business Analytics
-          </h1>
-
-          <p className="text-sm text-ink-muted mt-1">
-            See how visitors interact with your
-            business website.
-          </p>
-        </div>
-
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {loading && (
-          <p className="text-sm text-ink-faint">
+          <p className="text-xs text-ink-faint text-center py-10">
             Loading analytics…
           </p>
         )}
 
         {error && (
-          <div className="panel p-5 text-sm text-danger">
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-600">
             {error}
           </div>
         )}
 
         {data && !loading && (
           <>
-            {/* =========================
-                ANALYTICS CARDS
-            ========================== */}
-
+            {/* Analytics Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 icon={Users}
                 label="Visitors"
                 value={data.visitors}
               />
-
               <StatCard
                 icon={Activity}
                 label="Sessions"
                 value={data.sessions}
               />
-
               <StatCard
                 icon={Eye}
                 label="Page views"
                 value={data.pageViews}
               />
-
               <StatCard
                 icon={MousePointerClick}
                 label="Button clicks"
                 value={data.buttonClicks}
               />
-
               <StatCard
                 icon={MessageCircle}
                 label="Chat opens"
                 value={data.chatOpened}
               />
-
               <StatCard
                 icon={MessagesSquare}
                 label="Messages sent"
                 value={data.messagesSent}
               />
-
               <StatCard
                 icon={UserPlus}
                 label="Leads"
                 value={data.leads}
               />
-
               <StatCard
                 icon={ShoppingCart}
                 label="Purchases"
@@ -177,24 +129,16 @@ export default function Analytics() {
               />
             </div>
 
-            {/* =========================
-                TODAY'S ACTIVITY
-            ========================== */}
-
-            <div className="panel p-6 mt-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h2 className="font-semibold">
-                    Today's activity
-                  </h2>
-
-                  <p className="text-xs text-ink-muted mt-1">
-                    Website activity by hour
-                  </p>
-                </div>
+            {/* Today's Activity Chart */}
+            <div className="bg-surface border border-border rounded-xl p-6">
+              <div className="mb-6">
+                <h2 className="font-semibold text-sm">Today's activity</h2>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Website activity by hour
+                </p>
               </div>
 
-              <div className="h-52 flex items-end gap-1">
+              <div className="h-48 flex items-end gap-1.5 pt-4">
                 {timeline.map((item) => {
                   const total =
                     item.visitors +
@@ -215,8 +159,7 @@ export default function Analytics() {
                     1
                   );
 
-                  const height =
-                    (total / maxValue) * 100;
+                  const height = (total / maxValue) * 100;
 
                   return (
                     <div
@@ -224,17 +167,13 @@ export default function Analytics() {
                       className="flex-1 h-full flex flex-col justify-end items-center"
                     >
                       <div
-                        className="w-full max-w-8 bg-copper rounded-t-md transition-all duration-500"
+                        className="w-full max-w-8 bg-copper rounded-t-md transition-all duration-300"
                         style={{
                           height: `${height}%`,
-                          minHeight:
-                            total > 0
-                              ? "4px"
-                              : "0",
+                          minHeight: total > 0 ? "4px" : "0",
                         }}
                         title={`${item.hour}:00 — ${total} events`}
                       />
-
                       <span className="text-[9px] text-ink-faint mt-2">
                         {item.hour}
                       </span>
@@ -244,111 +183,56 @@ export default function Analytics() {
               </div>
             </div>
 
-            {/* =========================
-                RELAY AI SUMMARY
-            ========================== */}
-
+            {/* AI Summary */}
             {aiSummary && (
-              <div className="panel p-6 mt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="h-9 w-9 rounded-lg bg-copper-dim flex items-center justify-center">
-                    <Bot
-                      size={18}
-                      className="text-copper"
-                    />
+              <div className="bg-surface border border-border rounded-xl p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-8 w-8 rounded-lg bg-copper/10 flex items-center justify-center">
+                    <Bot size={16} className="text-copper" />
                   </div>
-
                   <div>
-                    <h2 className="font-semibold">
-                      Relay AI Summary
-                    </h2>
-
+                    <h2 className="font-semibold text-sm">Relay AI Summary</h2>
                     <p className="text-xs text-ink-muted">
                       Today's business insights
                     </p>
                   </div>
                 </div>
-
-                <p className="text-sm leading-6 text-ink-muted whitespace-pre-line">
+                <p className="text-xs leading-relaxed text-ink-muted whitespace-pre-line">
                   {aiSummary.summary}
                 </p>
               </div>
             )}
 
-            {/* =========================
-                VISITOR + ENGAGEMENT
-            ========================== */}
-
-            <div className="grid md:grid-cols-2 gap-5 mt-6">
-              <div className="panel p-6">
-                <h2 className="font-semibold mb-4">
-                  Visitor activity
-                </h2>
-
-                <div className="space-y-4">
-                  <MetricRow
-                    label="Visitors"
-                    value={data.visitors}
-                  />
-
-                  <MetricRow
-                    label="Sessions"
-                    value={data.sessions}
-                  />
-
-                  <MetricRow
-                    label="Page views"
-                    value={data.pageViews}
-                  />
-
-                  <MetricRow
-                    label="Button clicks"
-                    value={data.buttonClicks}
-                  />
+            {/* Detailed Metric Tables */}
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-surface border border-border rounded-xl p-6">
+                <h2 className="font-semibold text-sm mb-4">Visitor activity</h2>
+                <div className="space-y-3">
+                  <MetricRow label="Visitors" value={data.visitors} />
+                  <MetricRow label="Sessions" value={data.sessions} />
+                  <MetricRow label="Page views" value={data.pageViews} />
+                  <MetricRow label="Button clicks" value={data.buttonClicks} />
                 </div>
               </div>
 
-              <div className="panel p-6">
-                <h2 className="font-semibold mb-4">
-                  Engagement
-                </h2>
-
-                <div className="space-y-4">
-                  <MetricRow
-                    label="Chat opens"
-                    value={data.chatOpened}
-                  />
-
-                  <MetricRow
-                    label="Messages sent"
-                    value={data.messagesSent}
-                  />
-
-                  <MetricRow
-                    label="Messages received"
-                    value={data.messagesReceived}
-                  />
-
-                  <MetricRow
-                    label="Leads generated"
-                    value={data.leads}
-                  />
-
-                  <MetricRow
-                    label="Purchases"
-                    value={data.purchases}
-                  />
+              <div className="bg-surface border border-border rounded-xl p-6">
+                <h2 className="font-semibold text-sm mb-4">Engagement</h2>
+                <div className="space-y-3">
+                  <MetricRow label="Chat opens" value={data.chatOpened} />
+                  <MetricRow label="Messages sent" value={data.messagesSent} />
+                  <MetricRow label="Messages received" value={data.messagesReceived} />
+                  <MetricRow label="Leads generated" value={data.leads} />
+                  <MetricRow label="Purchases" value={data.purchases} />
                 </div>
               </div>
             </div>
           </>
         )}
-      </main>
+      </div>
     </div>
   );
 }
 
-         
 function StatCard({
   icon: Icon,
   label,
@@ -359,38 +243,21 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="panel p-5">
-      <div className="w-9 h-9 rounded-panel bg-copper-dim text-copper flex items-center justify-center mb-4">
-        <Icon size={18} />
+    <div className="bg-surface border border-border rounded-xl p-5">
+      <div className="w-8 h-8 rounded-lg bg-copper/10 text-copper flex items-center justify-center mb-3">
+        <Icon size={16} />
       </div>
-
-      <div className="text-2xl font-semibold">
-        {value.toLocaleString()}
-      </div>
-
-      <div className="text-xs text-ink-muted mt-1">
-        {label}
-      </div>
+      <div className="text-xl font-semibold">{value.toLocaleString()}</div>
+      <div className="text-xs text-ink-muted mt-0.5">{label}</div>
     </div>
   );
 }
 
-function MetricRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
+function MetricRow({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-ink-muted">
-        {label}
-      </span>
-
-      <span className="text-sm font-semibold">
-        {value.toLocaleString()}
-      </span>
+    <div className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none">
+      <span className="text-ink-muted">{label}</span>
+      <span className="font-medium text-ink">{value.toLocaleString()}</span>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import crypto from "crypto";
 
 import { prisma } from "@/config/postgres";
-import { getCachedApiKey, setCachedApiKey } from "@/utils/apiKeyCache"; // ← confirm this path
+import { getCachedApiKey, setCachedApiKey } from "@/utils/apiKeyCache";
 
 export interface RelayRequest extends Request {
   relayApiKeyId?: string;
@@ -10,6 +10,7 @@ export interface RelayRequest extends Request {
     id: string;
     plan: "FREE" | "PRO" | "ENTERPRISE";
   };
+  apiKeyType?: "ANALYTICS" | "ASSISTANT";
 }
 
 export async function verifyRelayApiKey(
@@ -47,6 +48,7 @@ export async function verifyRelayApiKey(
     id: cached.organizationId,
     plan: cached.plan,
   };
+  req.apiKeyType = cached.type;
   return next();
 }
 
@@ -69,18 +71,12 @@ export async function verifyRelayApiKey(
       });
     }
 
-    if (key.organization.plan === "FREE") {
-      return res.status(403).json({
-        success: false,
-        message: "Analytics requires an active subscription.",
-      });
-    }
-
     setCachedApiKey(hashedKey, {
       id: key.id,
       organizationId: key.organization.id,
       plan: key.organization.plan,
       revoked: key.revoked,
+      type: key.type,
     });
 
     const now = new Date();
@@ -100,6 +96,7 @@ export async function verifyRelayApiKey(
       id: key.organization.id,
       plan: key.organization.plan,
     };
+    req.apiKeyType = key.type;
 
     next();
   } catch (error) {

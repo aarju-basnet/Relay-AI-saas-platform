@@ -3,7 +3,7 @@ import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { Conversation } from "@/models/Conversation";
 import { redis } from "@/config/redis";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 import { buildDefaultSystemPrompt } from "@/routes/assistant.routes";
 import { generateAIResponse } from "@/services/llm.service";
 import { findRelevantChunks } from "@/utils/retrieval";
@@ -15,9 +15,9 @@ interface ChatMessage {
   content: string;
 }
 
-// POST /api/llm/chat
+// POST /api/llm/:organizationId/chat
 router.post(
-  "/chat",
+  "/:organizationId/chat",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     const {
@@ -35,14 +35,15 @@ router.post(
     }
 
     const userId = req.auth!.userId;
+    const { organizationId } = req.params;
 
     const membership =
-      await getCurrentMembership(userId);
+      await getMembershipForOrg(userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         error:
-          "You're not part of a workspace yet",
+          "You don't have access to this workspace.",
       });
     }
 
@@ -88,16 +89,14 @@ router.post(
       conversationId
         ? await Conversation.findOne({
             _id: conversationId,
-            orgId:
-              membership.organizationId,
+            orgId: organizationId,
           })
         : null;
 
     if (!conversation) {
       conversation =
         await Conversation.create({
-          orgId:
-            membership.organizationId,
+          orgId: organizationId,
           userId,
           createdByName:
             requesterUser?.name ||
@@ -120,13 +119,13 @@ router.post(
        const [assistant, allChunks] = await Promise.all([
       prisma.assistant.findUnique({
         where: {
-          organizationId: membership.organizationId,
+          organizationId,
         },
       }),
       prisma.knowledgeChunk.findMany({
         where: {
           document: {
-            organizationId: membership.organizationId,
+            organizationId,
             status: "READY",
           },
         },
@@ -207,30 +206,32 @@ router.post(
   }
 );
 
-// GET /api/llm/conversations
+// GET /api/llm/:organizationId/conversations
 router.get(
-  "/conversations",
+  "/:organizationId/conversations",
   requireAuth,
   async (
     req: AuthRequest,
     res: Response
   ) => {
+    const { organizationId } = req.params;
+
     const membership =
-      await getCurrentMembership(
-        req.auth!.userId
+      await getMembershipForOrg(
+        req.auth!.userId,
+        organizationId
       );
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         error:
-          "You're not part of a workspace yet",
+          "You don't have access to this workspace.",
       });
     }
 
     const conversations =
       await Conversation.find({
-        orgId:
-          membership.organizationId,
+        orgId: organizationId,
       })
         .select(
           "title createdAt updatedAt createdByName assignedTo assignedToName"
@@ -245,31 +246,33 @@ router.get(
   }
 );
 
-// GET /api/llm/conversations/:id
+// GET /api/llm/:organizationId/conversations/:id
 router.get(
-  "/conversations/:id",
+  "/:organizationId/conversations/:id",
   requireAuth,
   async (
     req: AuthRequest,
     res: Response
   ) => {
+    const { organizationId } = req.params;
+
     const membership =
-      await getCurrentMembership(
-        req.auth!.userId
+      await getMembershipForOrg(
+        req.auth!.userId,
+        organizationId
       );
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         error:
-          "You're not part of a workspace yet",
+          "You don't have access to this workspace.",
       });
     }
 
     const conversation =
       await Conversation.findOne({
         _id: req.params.id,
-        orgId:
-          membership.organizationId,
+        orgId: organizationId,
       });
 
     if (!conversation) {
@@ -284,31 +287,33 @@ router.get(
   }
 );
 
-// PATCH /api/llm/conversations/:id/assign
+// PATCH /api/llm/:organizationId/conversations/:id/assign
 router.patch(
-  "/conversations/:id/assign",
+  "/:organizationId/conversations/:id/assign",
   requireAuth,
   async (
     req: AuthRequest,
     res: Response
   ) => {
+    const { organizationId } = req.params;
+
     const membership =
-      await getCurrentMembership(
-        req.auth!.userId
+      await getMembershipForOrg(
+        req.auth!.userId,
+        organizationId
       );
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         error:
-          "You're not part of a workspace yet",
+          "You don't have access to this workspace.",
       });
     }
 
     const conversation =
       await Conversation.findOne({
         _id: req.params.id,
-        orgId:
-          membership.organizationId,
+        orgId: organizationId,
       });
 
     if (!conversation) {
@@ -334,8 +339,7 @@ router.patch(
             where: {
               userId_organizationId: {
                 userId: assignedTo,
-                organizationId:
-                  membership.organizationId,
+                organizationId,
               },
             },
             include: {
@@ -375,16 +379,17 @@ router.patch(
 
 
 
-// PATCH /api/llm/conversations/:id - rename (OWNER/ADMIN only)
+// PATCH /api/llm/:organizationId/conversations/:id - rename (OWNER/ADMIN only)
 router.patch(
-  "/conversations/:id",
+  "/:organizationId/conversations/:id",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(req.auth!.userId);
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -404,7 +409,7 @@ router.patch(
 
     const conversation = await Conversation.findOne({
       _id: req.params.id,
-      orgId: membership.organizationId,
+      orgId: organizationId,
     });
 
     if (!conversation) {
@@ -418,16 +423,17 @@ router.patch(
   }
 );
 
-// DELETE /api/llm/conversations/:id - delete (OWNER/ADMIN only)
+// DELETE /api/llm/:organizationId/conversations/:id - delete (OWNER/ADMIN only)
 router.delete(
-  "/conversations/:id",
+  "/:organizationId/conversations/:id",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(req.auth!.userId);
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -439,7 +445,7 @@ router.delete(
 
     const conversation = await Conversation.findOneAndDelete({
       _id: req.params.id,
-      orgId: membership.organizationId,
+      orgId: organizationId,
     });
 
     if (!conversation) {

@@ -5,15 +5,14 @@ interface CachedApiKey {
 
   plan: "FREE" | "PRO" | "ENTERPRISE";
 
+  type: "ANALYTICS" | "ASSISTANT";
+
   revoked: boolean;
 
   cachedAt: number;
 }
 
-const cache = new Map<
-  string,
-  CachedApiKey
->();
+const cache = new Map<string, CachedApiKey>();
 
 const TTL = 5 * 60 * 1000;
 

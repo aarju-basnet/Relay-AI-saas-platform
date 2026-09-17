@@ -2,13 +2,15 @@ import { Response } from "express";
 import { Conversation } from "@/models/Conversation";
 import { prisma } from "@/config/postgres";
 import { AuthRequest } from "@/middleware/auth";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 export async function getDashboardOverview(req: AuthRequest, res: Response) {
   try {
-    const membership = await getCurrentMembership(req.auth!.userId);
+    const { organizationId } = req.params;
+
+    const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
     if (!membership) {
-      return res.status(400).json({ message: "You're not part of a workspace yet" });
+      return res.status(403).json({ message: "You don't have access to this workspace" });
     }
     const orgId = membership.organizationId;
 
@@ -67,6 +69,22 @@ export async function getDashboardOverview(req: AuthRequest, res: Response) {
     });
 
     //---------------------------------------
+    // Team members active today (logged in / made an authenticated
+    // request since midnight) - distinct from conversation activity above.
+    //---------------------------------------
+
+    const activeTeamMembersToday = await prisma.membership.count({
+      where: {
+        organizationId: orgId,
+        user: {
+          lastActiveAt: {
+            gte: startOfToday,
+          },
+        },
+      },
+    });
+
+    //---------------------------------------
     // Average AI Response Time
     //---------------------------------------
 
@@ -82,6 +100,7 @@ export async function getDashboardOverview(req: AuthRequest, res: Response) {
         totalMessages,
         totalUsers,
         activeToday,
+        activeTeamMembersToday,
         avgResponseTime,
         aiResponses,
         humanResponses,

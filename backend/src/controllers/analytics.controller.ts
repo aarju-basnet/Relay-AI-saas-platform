@@ -32,16 +32,39 @@ export async function createAnalyticsEvent(
       });
     }
 
-    const analyticsEvent = await prisma.analyticsEvent.create({
-      data: {
-        organizationId: req.organization.id,
-        visitorId,
-        sessionId,
-        event,
-        page,
-        metadata,
-      },
+    const organizationId = req.organization.id;
+
+    // Check BEFORE creating the new event, so this only ever fires once -
+    // on the very first analytics event this organization has ever received.
+    const hadPriorEvents = await prisma.analyticsEvent.findFirst({
+      where: { organizationId },
+      select: { id: true },
     });
+
+    const analyticsEvent = await prisma.analyticsEvent.create({
+  data: {
+    organizationId,
+    visitorId,
+    sessionId,
+    event,
+    page,
+    metadata,
+    keySource: req.apiKeyType ?? "ANALYTICS",
+  },
+});
+
+    if (!hadPriorEvents) {
+      // Don't let this block the widget's response - the visitor's event
+      // was already recorded successfully either way.
+      prisma.organization
+        .update({
+          where: { id: organizationId },
+          data: { analyticsLive: true },
+        })
+        .catch((err) =>
+          console.error("Failed to flip analyticsLive:", err)
+        );
+    }
 
     return res.status(201).json({
       success: true,

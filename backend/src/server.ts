@@ -24,6 +24,8 @@ import apiKeyRoutes from "./routes/apiKey.routes";
 import widgetRoutes from "@/routes/widget.routes";
 import teamChatRoutes from "@/routes/teamChat.routes";
 import knowledgeRoutes from "@/routes/knowledge.routes";
+import securityRoutes from "@/routes/security.routes";
+import notificationRoutes from "@/routes/notification.routes";
 
 
 const app = express();
@@ -53,7 +55,7 @@ app.use("/api/webhooks", express.raw({ type: "application/json" }), webhookRoute
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 app.use(passport.initialize());
-app.use(debugLogger);
+
 // Global rate limiter (per-IP) - a second, tighter limiter is applied on the LLM route itself
 app.use(
   rateLimit({
@@ -65,7 +67,7 @@ app.use(
 );
 
 
-app.use("/api/widget", cors(), widgetRoutes);
+app.use("/api/widget", cors(), debugLogger, widgetRoutes);
 
 // Global CORS restriction applied to all remaining routes below
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
@@ -84,6 +86,8 @@ app.use( "/api/developer", developerRoutes);
 app.use( "/api/api-keys",apiKeyRoutes);
 app.use("/api/team-chat", teamChatRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
+app.use("/api/security", securityRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", redis: redis.status });

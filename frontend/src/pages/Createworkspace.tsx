@@ -32,7 +32,7 @@ export default function CreateWorkspace() {
   const navigate = useNavigate();
 
   // Already has a workspace (e.g. came back to this URL manually) - skip ahead.
-  if (user?.workspace) {
+  if (user?.workspaces) {
     navigate("/dashboard", { replace: true });
     return null;
   }

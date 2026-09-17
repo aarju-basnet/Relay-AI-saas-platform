@@ -1,124 +1,115 @@
-import { Router, Response } from "express";
+import { Router } from "express";
+
 import { requireAuth, AuthRequest } from "@/middleware/auth";
-import { TeamMessage } from "@/models/TeamMessage";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
-import { redis } from "@/config/redis";
+import { getMembershipForOrg } from "@/utils/membership";
 
 const router = Router();
 
-// GET /api/team-chat/messages
-router.get(
-  "/messages",
-  requireAuth,
-  async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(req.auth!.userId);
+router.get("/:organizationId", requireAuth, async (req: AuthRequest, res) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
 
-    if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet",
-      });
-    }
+  const workspace = await prisma.organization.findUnique({
+    where: { id: organizationId },
+  });
+  if (!workspace) return res.status(404).json({ error: "Workspace not found." });
 
-    const messages = await TeamMessage.find({
-      orgId: membership.organizationId,
-    })
-      .sort({ createdAt: 1 })
-      .limit(200);
+  res.json({
+    settings: {
+      plan: workspace.plan,
+      developerMode: workspace.developerMode,
+      debugLogs: workspace.debugLogs,
+      apiAccess: workspace.plan !== "FREE" && workspace.apiAccess,
+      customPrompt: workspace.plan !== "FREE" && workspace.customPrompt,
+      deleteWorkspace: membership.role === "OWNER",
+    },
+  });
+});
 
-    return res.json({ messages });
+router.patch("/:organizationId", requireAuth, async (req: AuthRequest, res) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
+  if (membership.role !== "OWNER") {
+    return res.status(403).json({ error: "Only workspace owner can modify advanced settings." });
   }
-);
 
-// POST /api/team-chat/messages
-router.post(
-  "/messages",
-  requireAuth,
-  async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(req.auth!.userId);
+  const workspace = await prisma.organization.findUnique({
+    where: { id: organizationId },
+  });
+  if (!workspace) return res.status(404).json({ error: "Workspace not found." });
 
-    if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet",
-      });
-    }
+  const { developerMode, debugLogs, apiAccess, customPrompt } = req.body as Partial<{
+    developerMode: boolean;
+    debugLogs: boolean;
+    apiAccess: boolean;
+    customPrompt: boolean;
+  }>;
 
-    const { content } = req.body as { content?: string };
-
-    if (!content || !content.trim()) {
-      return res.status(400).json({
-        error: "Message content is required.",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.auth!.userId },
-      select: { name: true, email: true, plan: true },
-    });
-
-    // FREE plan: 5 team chat messages per day, per user
-    if (user?.plan === "FREE") {
-      const rateKey = `ratelimit:teamchat:${req.auth!.userId}`;
-      const count = await redis.incr(rateKey);
-
-      if (count === 1) {
-        await redis.expire(rateKey, 24 * 60 * 60);
-      }
-
-      if (count > 5) {
-        return res.status(429).json({
-          error:
-            "Free plan limit reached (5 team messages / day). Upgrade to Pro for unlimited messaging.",
-        });
-      }
-    }
-
-    const message = await TeamMessage.create({
-      orgId: membership.organizationId,
-      userId: req.auth!.userId,
-      userName: user?.name || user?.email || "Unknown",
-      content: content.trim(),
-    });
-
-    return res.status(201).json({ message });
+  if (workspace.plan === "FREE" && (apiAccess || customPrompt)) {
+    return res.status(403).json({ error: "This feature is available only on Pro plans." });
   }
-);
 
-// DELETE /api/team-chat/messages/:id
+  const updated = await prisma.organization.update({
+    where: { id: workspace.id },
+    data: {
+      ...(developerMode !== undefined && { developerMode }),
+      ...(debugLogs !== undefined && { debugLogs }),
+      ...(apiAccess !== undefined && { apiAccess }),
+      ...(customPrompt !== undefined && { customPrompt }),
+    },
+  });
+
+  res.json({
+    message: "Advanced settings updated successfully.",
+    settings: {
+      plan: updated.plan,
+      developerMode: updated.developerMode,
+      debugLogs: updated.debugLogs,
+      apiAccess: updated.plan !== "FREE" && updated.apiAccess,
+      customPrompt: updated.plan !== "FREE" && updated.customPrompt,
+      deleteWorkspace: membership.role === "OWNER",
+    },
+  });
+});
+
+
+
 router.delete(
-  "/messages/:id",
+  "/:organizationId",
   requireAuth,
-  async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(req.auth!.userId);
+  async (req: AuthRequest, res) => {
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
+    );
 
     if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
-    const message = await TeamMessage.findOne({
-      _id: req.params.id,
-      orgId: membership.organizationId,
+    if (membership.role !== "OWNER") {
+      return res.status(403).json({
+        error:
+          "Only workspace owner can delete the workspace.",
+      });
+    }
+
+    await prisma.organization.delete({
+      where: {
+        id: organizationId,
+      },
     });
 
-    if (!message) {
-      return res.status(404).json({ error: "Message not found." });
-    }
-
-    const isOwnMessage = message.userId === req.auth!.userId;
-    const canModerate =
-      membership.role === "OWNER" || membership.role === "ADMIN";
-
-    if (!isOwnMessage && !canModerate) {
-      return res.status(403).json({
-        error: "You can only delete your own messages.",
-      });
-    }
-
-    await message.deleteOne();
-
-    return res.json({ success: true });
+    res.json({
+      message:
+        "Workspace deleted successfully.",
+    });
   }
 );
 

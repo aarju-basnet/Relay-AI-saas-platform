@@ -3,22 +3,47 @@
 /*
   Relay design tokens - light, professional SaaS look (Stripe/Linear/Notion
   register) rather than a dark dev-console. Real elevation via shadows,
-  not just borders. Copper stays as the one brand accent; teal marks
+  not just borders. Forest green is the one brand accent; teal marks
   model-status only, kept deliberately rare so it reads as signal.
+
+
 */
+
+
+/* Tailwind v4 requires an explicit custom-variant for class-based dark mode
+   (v4 defaults to prefers-color-scheme only otherwise). This lets us toggle
+   dark mode manually via a .dark class on <html>, independent of OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+.dark {
+  --color-canvas: #0d0e12;
+  --color-surface: #16181d;
+  --color-border: #262932;
+  --color-border-strong: #33363f;
+  --color-page: #0d0e12; /* matches dark canvas */
+
+  --color-ink: #f2f3f5;
+  --color-ink-muted: #9aa1ac;
+  --color-ink-faint: #6b7280;
+
+  --color-copper-dim: #12281c;
+  --color-teal-dim: #0d2e2b;
+  --color-danger-dim: #3a1414;
+}
+
 @theme {
   --color-canvas: #fafafa; /* page background */
   --color-surface: #ffffff; /* card/panel background */
   --color-border: #e5e7eb;
   --color-border-strong: #d4d7dd;
-
+--color-page: #ffffff; /* main content area background - white in light mode */
   --color-ink: #12141a; /* headings, primary text */
   --color-ink-muted: #5b6472; /* secondary text */
   --color-ink-faint: #9aa1ac; /* placeholders, timestamps */
 
-  --color-copper: #b8763a; /* deepened for AA contrast on white */
-  --color-copper-bright: #cc8a4b;
-  --color-copper-dim: #f2e2d1; /* light tint for subtle backgrounds */
+  --color-copper: #15803d; /* Relay signature forest green - AA contrast on white */
+  --color-copper-bright: #1a9b4a;
+  --color-copper-dim: #dcfce7; /* light tint for subtle backgrounds */
 
   --color-teal: #0f9488;
   --color-teal-dim: #e3f5f3;
@@ -65,6 +90,14 @@
   body,
   #root {
     height: 100%;
+  }
+
+   html {
+    scroll-behavior: smooth;
+  }
+
+  section[id] {
+    scroll-margin-top: 72px;
   }
 
   body {
@@ -189,11 +222,11 @@ transform:translateY(-4px);
 @keyframes pulseGlow{
 
 0%,100%{
-box-shadow:0 0 0 rgba(200,134,72,.2);
+box-shadow:0 0 0 rgba(21,128,61,.2);
 }
 
 50%{
-box-shadow:0 0 22px rgba(200,134,72,.45);
+box-shadow:0 0 22px rgba(21,128,61,.45);
 }
 
 }
@@ -253,3 +286,4 @@ box-shadow:0 0 22px rgba(200,134,72,.45);
   }
 
 }
+

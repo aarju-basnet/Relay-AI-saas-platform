@@ -43,7 +43,7 @@ export default function Register() {
     setSubmitting(true);
     try {
       await register(email, password, businessName, name || undefined);
-      navigate("/dashboard");
+navigate("/select-workspace");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {

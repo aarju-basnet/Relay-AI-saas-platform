@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import ChatBubble from "./ChatBubble";
 import ChatWindow from "./ChatWindow";
@@ -18,9 +18,32 @@ export default function Widget({ config }: WidgetProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [chatService] = useState(
-    () => new ChatService(new RelayApi(config.apiKey, config.apiBaseUrl))
-  );
+  // Mode is unknown until verify() resolves. Analytics-only keys never
+  // unlock the chat bubble at all - only Assistant keys do. Rendering
+  // nothing while unknown avoids a flash of the bubble before we've
+  // confirmed the key actually grants chat access.
+  const [mode, setMode] = useState<"assistant" | "analytics" | null>(null);
+
+  const [api] = useState(() => new RelayApi(config.apiKey, config.apiBaseUrl));
+  const [chatService] = useState(() => new ChatService(api));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    api
+      .verify()
+      .then((res) => {
+        if (!cancelled) setMode(res.mode);
+      })
+      .catch((error) => {
+        console.error("Relay Widget: key verification failed.", error);
+        if (!cancelled) setMode("analytics");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
 
   const handleOpen = () => {
     setIsOpen(true);
@@ -71,6 +94,14 @@ export default function Widget({ config }: WidgetProps) {
       setLoading(false);
     }
   };
+
+  // Analytics-only keys (or unverified/failed keys) never render the
+  // bubble or chat window - the widget silently does nothing visible,
+  // while the tracker (mounted separately in the SDK's entry point)
+  // still records analytics events as normal.
+  if (mode !== "assistant") {
+    return null;
+  }
 
   return (
     <>

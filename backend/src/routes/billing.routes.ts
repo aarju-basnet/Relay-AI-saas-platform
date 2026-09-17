@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import crypto from "crypto";
 import { prisma } from "@/config/postgres";
 import { requireAuth, AuthRequest } from "@/middleware/auth";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 import {
   buildEsewaFormFields,
   verifyEsewaCallback,
@@ -26,22 +26,23 @@ const CLIENT_URL =
 */
 
 router.post(
-  "/create-checkout-session",
+  "/:organizationId/create-checkout-session",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const interval = req.body?.interval === "year" ? "year" : "month";
+      const { organizationId } = req.params;
 
-      const membership = await getCurrentMembership(req.auth!.userId);
+      const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
       if (!membership) {
-        return res.status(400).json({
-          error: "You need a workspace before upgrading.",
+        return res.status(403).json({
+          error: "You don't have access to this workspace.",
         });
       }
 
       const organization = await prisma.organization.findUnique({
-        where: { id: membership.organizationId },
+        where: { id: organizationId },
       });
 
       if (!organization) {
@@ -85,18 +86,19 @@ router.post("/create-portal-session", requireAuth, async (req, res) => {
 */
 
 router.post(
-  "/demo-upgrade",
+  "/:organizationId/demo-upgrade",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const interval = req.body?.interval === "year" ? "YEARLY" : "MONTHLY";
       const userId = req.auth!.userId;
+      const { organizationId } = req.params;
 
-      const membership = await getCurrentMembership(userId);
+      const membership = await getMembershipForOrg(userId, organizationId);
 
       if (!membership) {
-        return res.status(400).json({
-          error: "You need a workspace before upgrading.",
+        return res.status(403).json({
+          error: "You don't have access to this workspace.",
         });
       }
 
@@ -106,7 +108,7 @@ router.post(
           data: { plan: "PRO" },
         }),
         prisma.organization.update({
-          where: { id: membership.organizationId },
+          where: { id: organizationId },
           data: { plan: "PRO" },
         }),
       ]);
@@ -134,11 +136,12 @@ router.post(
 */
 
 router.get(
-  "/current",
+  "/:organizationId/current",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.auth!.userId;
+      const { organizationId } = req.params;
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -148,7 +151,11 @@ router.get(
         return res.status(404).json({ error: "User not found" });
       }
 
-      const membership = await getCurrentMembership(userId);
+      const membership = await getMembershipForOrg(userId, organizationId);
+
+      if (!membership) {
+        return res.status(403).json({ error: "You don't have access to this workspace." });
+      }
 
       let organizationPlan: string | null = null;
 
@@ -180,11 +187,12 @@ router.get(
 */
 
 router.post(
-  "/cancel",
+  "/:organizationId/cancel",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const userId = req.auth!.userId;
+      const { organizationId } = req.params;
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -200,7 +208,11 @@ router.post(
         });
       }
 
-      const membership = await getCurrentMembership(userId);
+      const membership = await getMembershipForOrg(userId, organizationId);
+
+      if (!membership) {
+        return res.status(403).json({ error: "You don't have access to this workspace." });
+      }
 
       await prisma.$transaction([
         prisma.user.update({
@@ -259,16 +271,17 @@ async function activateProPlan(
 }
 
 router.post(
-  "/esewa/initiate",
+  "/:organizationId/esewa/initiate",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const interval = req.body?.interval === "year" ? "year" : "month";
       const userId = req.auth!.userId;
+      const { organizationId } = req.params;
 
-      const membership = await getCurrentMembership(userId);
+      const membership = await getMembershipForOrg(userId, organizationId);
       if (!membership) {
-        return res.status(400).json({ error: "You need a workspace first." });
+        return res.status(403).json({ error: "You don't have access to this workspace." });
       }
 
       const amountNpr = getPlanPriceNpr(interval);
@@ -364,16 +377,17 @@ router.get("/esewa/failure", async (_req: Request, res: Response) => {
 /* -------------------------------------------------------------------------- */
 
 router.post(
-  "/khalti/initiate",
+  "/:organizationId/khalti/initiate",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
       const interval = req.body?.interval === "year" ? "year" : "month";
       const userId = req.auth!.userId;
+      const { organizationId } = req.params;
 
-      const membership = await getCurrentMembership(userId);
+      const membership = await getMembershipForOrg(userId, organizationId);
       if (!membership) {
-        return res.status(400).json({ error: "You need a workspace first." });
+        return res.status(403).json({ error: "You don't have access to this workspace." });
       }
 
       const user = await prisma.user.findUnique({ where: { id: userId } });

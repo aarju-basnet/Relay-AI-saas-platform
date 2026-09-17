@@ -5,7 +5,7 @@ import { z } from "zod";
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { prisma } from "@/config/postgres";
 import { sendTeamInviteEmail } from "@/utils/email";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 const router = Router();
 
@@ -50,22 +50,24 @@ async function getWorkspaceOwnerPlan(
 /* -------------------------------------------------------------------------- */
 
 router.get(
-  "/members",
+  "/:organizationId/members",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const membership = await getCurrentMembership(
-      req.auth!.userId
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
     );
 
     if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of any workspace.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
     const members = await prisma.membership.findMany({
       where: {
-        organizationId: membership.organizationId,
+        organizationId,
       },
 
       include: {
@@ -87,7 +89,7 @@ router.get(
     });
 
     const ownerPlan = await getWorkspaceOwnerPlan(
-      membership.organizationId
+      organizationId
     );
 
     const seatCap = getSeatCap(ownerPlan);
@@ -129,16 +131,18 @@ const inviteSchema = z.object({
 /* -------------------------------------------------------------------------- */
 
 router.post(
-  "/invite",
+  "/:organizationId/invite",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const requester = await getCurrentMembership(
-      req.auth!.userId
+    const { organizationId } = req.params;
+    const requester = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
     );
 
     if (!requester) {
-      return res.status(400).json({
-        error: "You're not part of any workspace.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -184,7 +188,7 @@ router.post(
     /* ---------------------------------------------------- */
 
     const ownerPlan = await getWorkspaceOwnerPlan(
-      requester.organizationId
+      organizationId
     );
 
     const seatCap = getSeatCap(ownerPlan);
@@ -192,7 +196,7 @@ router.post(
     const totalMembers =
       await prisma.membership.count({
         where: {
-          organizationId: requester.organizationId,
+          organizationId,
         },
       });
 
@@ -209,7 +213,7 @@ router.post(
     const workspace =
       await prisma.organization.findUnique({
         where: {
-          id: requester.organizationId,
+          id: organizationId,
         },
       });
 
@@ -299,16 +303,18 @@ const updateRoleSchema = z.object({
 });
 
 router.patch(
-  "/members/:id/role",
+  "/:organizationId/members/:id/role",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const requester = await getCurrentMembership(
-      req.auth!.userId
+    const { organizationId } = req.params;
+    const requester = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
     );
 
     if (!requester) {
-      return res.status(400).json({
-        error: "You're not part of any workspace.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -337,7 +343,7 @@ router.patch(
         where: {
           userId_organizationId: {
             userId: req.params.id,
-            organizationId: requester.organizationId,
+            organizationId,
           },
         },
       });
@@ -422,16 +428,18 @@ router.patch(
 /* -------------------------------------------------------------------------- */
 
 router.delete(
-  "/members/:id",
+  "/:organizationId/members/:id",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
-    const requester = await getCurrentMembership(
-      req.auth!.userId
+    const { organizationId } = req.params;
+    const requester = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
     );
 
     if (!requester) {
-      return res.status(400).json({
-        error: "You're not part of any workspace.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -449,7 +457,7 @@ router.delete(
         where: {
           userId_organizationId: {
             userId: req.params.id,
-            organizationId: requester.organizationId,
+            organizationId,
           },
         },
 

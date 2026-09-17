@@ -2,7 +2,7 @@ import { Router, Response } from "express";
 import { z } from "zod";
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 const router = Router();
 
@@ -32,15 +32,16 @@ export function buildDefaultSystemPrompt(assistant: {
   return `You are ${assistant.name}, an AI assistant for this business. You help with: ${purposeText}. Respond in a ${assistant.responseStyle.toLowerCase()} tone, in ${assistant.language}. Keep answers accurate, concise, and helpful. If you don't know something specific to this business, say so honestly rather than guessing.`;
 }
 
-// GET /api/assistant - fetches this workspace's assistant config,
+// GET /api/assistant/:organizationId - fetches this workspace's assistant config,
 // auto-creating sensible defaults the first time it's requested.
-router.get("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const membership = await getCurrentMembership(req.auth!.userId);
-  if (!membership) return res.status(400).json({ error: "You're not part of a workspace yet" });
+router.get("/:organizationId", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
 
-  let assistant = await prisma.assistant.findUnique({ where: { organizationId: membership.organizationId } });
+  let assistant = await prisma.assistant.findUnique({ where: { organizationId } });
   if (!assistant) {
-    assistant = await prisma.assistant.create({ data: { organizationId: membership.organizationId } });
+    assistant = await prisma.assistant.create({ data: { organizationId } });
   }
 
   res.json({ assistant });
@@ -56,10 +57,11 @@ const updateAssistantSchema = z.object({
   systemPrompt: z.string().max(2000).optional().nullable(),
 });
 
-// PATCH /api/assistant - OWNER or ADMIN only
-router.patch("/", requireAuth, async (req: AuthRequest, res: Response) => {
-  const membership = await getCurrentMembership(req.auth!.userId);
-  if (!membership) return res.status(400).json({ error: "You're not part of a workspace yet" });
+// PATCH /api/assistant/:organizationId - OWNER or ADMIN only
+router.patch("/:organizationId", requireAuth, async (req: AuthRequest, res: Response) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
   if (membership.role !== "OWNER" && membership.role !== "ADMIN") {
     return res.status(403).json({ error: "Only owners and admins can edit the AI assistant" });
   }
@@ -68,9 +70,9 @@ router.patch("/", requireAuth, async (req: AuthRequest, res: Response) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
 
   const assistant = await prisma.assistant.upsert({
-    where: { organizationId: membership.organizationId },
+    where: { organizationId },
     update: parsed.data,
-    create: { organizationId: membership.organizationId, ...parsed.data },
+    create: { organizationId, ...parsed.data },
   });
 
   res.json({ assistant });

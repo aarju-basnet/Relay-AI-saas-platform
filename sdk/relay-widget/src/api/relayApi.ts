@@ -13,6 +13,7 @@ export interface RelayChatResponse {
 export interface RelayVerifyResponse {
   success: boolean;
   organizationId: string;
+  mode: "assistant" | "analytics";
 }
 
 export class RelayApi {

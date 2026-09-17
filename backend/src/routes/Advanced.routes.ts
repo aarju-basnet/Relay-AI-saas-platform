@@ -2,129 +2,94 @@ import { Router } from "express";
 
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 const router = Router();
 
-async function getWorkspace() {
-  return prisma.organization.findFirst({
-    include: {
-      assistant: true,
+router.get("/:organizationId", requireAuth, async (req: AuthRequest, res) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
+
+  const workspace = await prisma.organization.findUnique({
+    where: { id: organizationId },
+  });
+  if (!workspace) return res.status(404).json({ error: "Workspace not found." });
+
+  res.json({
+    settings: {
+      plan: workspace.plan,
+      developerMode: workspace.developerMode,
+      debugLogs: workspace.debugLogs,
+      apiAccess: workspace.plan !== "FREE" && workspace.apiAccess,
+      customPrompt: workspace.plan !== "FREE" && workspace.customPrompt,
+      deleteWorkspace: membership.role === "OWNER",
     },
   });
-}
+});
 
-router.get(
-  "/",
-  requireAuth,
-  async (req: AuthRequest, res) => {
-    const membership = await getCurrentMembership(
-      req.auth!.userId
-    );
-
-    if (!membership) {
-      return res.status(400).json({
-        error: "Workspace not found.",
-      });
-    }
-
-    const workspace =
-      await prisma.organization.findUnique({
-        where: {
-          id: membership.organizationId,
-        },
-        include: {
-          assistant: true,
-        },
-      });
-
-    if (!workspace) {
-      return res.status(404).json({
-        error: "Workspace not found.",
-      });
-    }
-
-    res.json({
-      settings: {
-        plan: workspace.plan,
-
-        developerMode: false,
-
-        debugLogs: false,
-
-        apiAccess: workspace.plan !== "FREE",
-
-        customPrompt:
-          workspace.plan !== "FREE",
-
-        deleteWorkspace:
-          membership.role === "OWNER",
-      },
-    });
+router.patch("/:organizationId", requireAuth, async (req: AuthRequest, res) => {
+  const { organizationId } = req.params;
+  const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
+  if (!membership) return res.status(403).json({ error: "You don't have access to this workspace." });
+  if (membership.role !== "OWNER") {
+    return res.status(403).json({ error: "Only workspace owner can modify advanced settings." });
   }
-);
 
-router.patch(
-  "/",
-  requireAuth,
-  async (req: AuthRequest, res) => {
-    const membership = await getCurrentMembership(
-      req.auth!.userId
-    );
+  const workspace = await prisma.organization.findUnique({
+    where: { id: organizationId },
+  });
+  if (!workspace) return res.status(404).json({ error: "Workspace not found." });
 
-    if (!membership) {
-      return res.status(400).json({
-        error: "Workspace not found.",
-      });
-    }
+  const { developerMode, debugLogs, apiAccess, customPrompt } = req.body as Partial<{
+    developerMode: boolean;
+    debugLogs: boolean;
+    apiAccess: boolean;
+    customPrompt: boolean;
+  }>;
 
-    if (membership.role !== "OWNER") {
-      return res.status(403).json({
-        error: "Only workspace owner can modify advanced settings.",
-      });
-    }
-
-    const workspace =
-      await prisma.organization.findUnique({
-        where: {
-          id: membership.organizationId,
-        },
-      });
-
-    if (!workspace) {
-      return res.status(404).json({
-        error: "Workspace not found.",
-      });
-    }
-
-    if (
-      workspace.plan === "FREE" &&
-      req.body.apiAccess
-    ) {
-      return res.status(403).json({
-        error:
-          "API Access is available only on Pro plans.",
-      });
-    }
-
-    res.json({
-      message:
-        "Advanced settings updated successfully.",
-    });
+  if (workspace.plan === "FREE" && (apiAccess || customPrompt)) {
+    return res.status(403).json({ error: "This feature is available only on Pro plans." });
   }
-);
+
+  const updated = await prisma.organization.update({
+    where: { id: workspace.id },
+    data: {
+      ...(developerMode !== undefined && { developerMode }),
+      ...(debugLogs !== undefined && { debugLogs }),
+      ...(apiAccess !== undefined && { apiAccess }),
+      ...(customPrompt !== undefined && { customPrompt }),
+    },
+  });
+
+  res.json({
+    message: "Advanced settings updated successfully.",
+    settings: {
+      plan: updated.plan,
+      developerMode: updated.developerMode,
+      debugLogs: updated.debugLogs,
+      apiAccess: updated.plan !== "FREE" && updated.apiAccess,
+      customPrompt: updated.plan !== "FREE" && updated.customPrompt,
+      deleteWorkspace: membership.role === "OWNER",
+    },
+  });
+});
+
+
 
 router.delete(
-  "/workspace",
+  "/:organizationId",
   requireAuth,
   async (req: AuthRequest, res) => {
-    const membership = await getCurrentMembership(
-      req.auth!.userId
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(
+      req.auth!.userId,
+      organizationId
     );
 
     if (!membership) {
-      return res.status(400).json({
-        error: "Workspace not found.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
@@ -137,7 +102,7 @@ router.delete(
 
     await prisma.organization.delete({
       where: {
-        id: membership.organizationId,
+        id: organizationId,
       },
     });
 

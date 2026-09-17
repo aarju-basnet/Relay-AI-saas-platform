@@ -254,3 +254,54 @@ function escapeHtml(input: string): string {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+
+export async function sendNewDeviceLoginAlert(
+  to: string,
+  details: { userAgent: string | null; ipAddress: string | null; time: Date }
+): Promise<void> {
+  const securityLink = `${process.env.CLIENT_URL || "http://localhost:5173"}/settings/security`;
+  const deviceLabel = details.userAgent ?? "Unknown device";
+  const ip = details.ipAddress ?? "Unknown IP";
+  const time = details.time.toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  const html = renderEmailTemplate({
+    preheader: "We noticed a new sign-in to your Relay account.",
+    heading: "New sign-in to your account",
+    bodyHtml: `
+      <p style="margin:0 0 12px 0;">We noticed a new sign-in to your Relay account.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; margin:0 0 12px 0; border:1px solid #E5E3DD; border-radius:8px; overflow:hidden;">
+        <tr>
+          <td style="padding:10px 14px; background-color:#FAFAF8; font-size:13px; color:#9A9A95; border-bottom:1px solid #E5E3DD; width:90px;">Device</td>
+          <td style="padding:10px 14px; font-size:13px; color:#4A4A46; border-bottom:1px solid #E5E3DD;">${escapeHtml(deviceLabel)}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px; background-color:#FAFAF8; font-size:13px; color:#9A9A95; border-bottom:1px solid #E5E3DD;">IP address</td>
+          <td style="padding:10px 14px; font-size:13px; color:#4A4A46; border-bottom:1px solid #E5E3DD;">${escapeHtml(ip)}</td>
+        </tr>
+        <tr>
+          <td style="padding:10px 14px; background-color:#FAFAF8; font-size:13px; color:#9A9A95;">Time</td>
+          <td style="padding:10px 14px; font-size:13px; color:#4A4A46;">${escapeHtml(time)}</td>
+        </tr>
+      </table>
+      <p style="margin:0 0 12px 0;">If this was you, no action is needed.</p>
+      <p style="margin:0; color:#9A9A95; font-size:13px;">If you don't recognize this activity, change your password immediately and turn on two-factor authentication for extra protection.</p>
+    `,
+    ctaLabel: "Review security settings",
+    ctaUrl: securityLink,
+    footerNote: "This alert was sent because a sign-in was detected from a device we haven't seen on your account before.",
+  });
+
+  await sendViaBrevo({
+    sender: {
+      name: process.env.BREVO_SENDER_NAME || "Relay",
+      email: process.env.BREVO_SENDER_EMAIL as string,
+    },
+    to: [{ email: to }],
+    subject: "New sign-in to your Relay account",
+    htmlContent: html,
+  });
+}

@@ -5,7 +5,7 @@ import { generateAIResponse } from "@/services/llm.service";
 import { findRelevantChunks } from "@/utils/retrieval";
 
 export async function verifyWidgetKey(req: RelayRequest, res: Response) {
-  if (!req.organization) {
+  if (!req.organization || !req.apiKeyType) {
     return res.status(401).json({
       success: false,
       message: "Invalid API Key.",
@@ -15,6 +15,7 @@ export async function verifyWidgetKey(req: RelayRequest, res: Response) {
   return res.json({
     success: true,
     organizationId: req.organization.id,
+    mode: req.apiKeyType === "ASSISTANT" ? "assistant" : "analytics",
   });
 }
 
@@ -23,6 +24,13 @@ export async function sendWidgetChatMessage(
   res: Response
 ) {
   try {
+    if (req.apiKeyType !== "ASSISTANT") {
+      return res.status(403).json({
+        success: false,
+        message: "This API key doesn't have AI Assistant access. Use your Assistant key instead.",
+      });
+    }
+
     const { visitorId, sessionId, message } = req.body;
 
     if (!visitorId || !sessionId || !message) {

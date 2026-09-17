@@ -1,18 +1,28 @@
 import { useEffect, useState } from "react";
+import { LayoutGrid, Terminal, ScrollText } from "lucide-react";
 
-import { api, DeveloperSystemStatus } from "@/lib/api";
+import { api, ApiError, DebugLogEntry } from "@/lib/api";
 
 import { useAuth } from "@/context/AuthContext";
+
+function formatLogTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleTimeString("en-US", { hour12: false });
+}
+
+function levelColor(level: string): string {
+  switch (level) {
+    case "ERROR":
+      return "text-red-400";
+    case "WARNING":
+      return "text-amber-400";
+    default:
+      return "text-green-400";
+  }
+}
 
 export default function DeveloperDashboard() {
   const { user } = useAuth();
   const isFree = user?.plan === "FREE";
-
-  const [status, setStatus] =
-    useState<DeveloperSystemStatus | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
 
   const [selectedEndpoint, setSelectedEndpoint] =
     useState("/api/auth/me");
@@ -23,21 +33,35 @@ export default function DeveloperDashboard() {
   const [sending, setSending] =
     useState(false);
 
-  async function loadSystemStatus() {
-    try {
-      const res =
-        await api.getDeveloperSystem();
+  // ---- Live Debug Console state ----
+  const [logs, setLogs] = useState<DebugLogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(true);
+  const [logsError, setLogsError] = useState<"none" | "not-enabled" | "other">("none");
+  const [logsPage, setLogsPage] = useState(1);
+  const [logsTotalPages, setLogsTotalPages] = useState(1);
 
-      setStatus(res.status);
+  async function loadLogs(page = 1) {
+    setLogsLoading(true);
+    try {
+      const res = await api.getDeveloperLogs(page);
+      setLogs(res.logs);
+      setLogsPage(res.page);
+      setLogsTotalPages(res.totalPages);
+      setLogsError("none");
     } catch (err) {
-      console.error(err);
+      if (err instanceof ApiError && err.status === 403) {
+        setLogsError("not-enabled");
+      } else {
+        setLogsError("other");
+      }
     } finally {
-      setLoading(false);
+      setLogsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadSystemStatus();
+    if (!isFree) loadLogs(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleRequest() {
@@ -89,15 +113,8 @@ export default function DeveloperDashboard() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-8 text-sm text-ink-muted">
-        Loading Developer Dashboard...
-      </div>
-    );
-  }
   return (
-  <div className="space-y-6">
+  <div className="w-full h-full min-h-screen bg-white dark:bg-canvas text-ink p-8 space-y-6">
 
     {/* Header */}
 
@@ -108,112 +125,8 @@ export default function DeveloperDashboard() {
       </h1>
 
       <p className="text-xs text-ink-muted mt-1">
-        Monitor Relay backend services, APIs and workspace health.
+        Test your APIs and monitor request activity for your workspace.
       </p>
-
-    </div>
-
-    {/* ====================== */}
-    {/* Status Cards */}
-    {/* ====================== */}
-
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-
-      <div className="rounded-2xl border border-border bg-surface p-5">
-
-        <p className="text-xs text-ink-muted">
-          API Status
-        </p>
-
-        <div className="mt-3 flex items-center gap-2">
-
-          <div
-            className={`w-3 h-3 rounded-full ${
-              status?.apiOnline
-                ? "bg-green-500 animate-pulse"
-                : "bg-red-500"
-            }`}
-          />
-
-          <span className="text-sm font-semibold">
-            {status?.apiOnline
-              ? "Online"
-              : "Offline"}
-          </span>
-
-        </div>
-
-      </div>
-
-      <div className="rounded-2xl border border-border bg-surface p-5">
-
-        <p className="text-xs text-ink-muted">
-          Database
-        </p>
-
-        <div className="mt-3 flex items-center gap-2">
-
-          <div
-            className={`w-3 h-3 rounded-full ${
-              status?.database
-                ? "bg-green-500 animate-pulse"
-                : "bg-red-500"
-            }`}
-          />
-
-          <span className="text-sm font-semibold">
-            {status?.database
-              ? "Connected"
-              : "Disconnected"}
-          </span>
-
-        </div>
-
-      </div>
-
-      <div className="rounded-2xl border border-border bg-surface p-5">
-
-        <p className="text-xs text-ink-muted">
-          AI Service
-        </p>
-
-        <div className="mt-3 flex items-center gap-2">
-
-          <div
-            className={`w-3 h-3 rounded-full ${
-              status?.aiHealthy
-                ? "bg-green-500 animate-pulse"
-                : "bg-red-500"
-            }`}
-          />
-
-          <span className="text-sm font-semibold">
-            {status?.aiHealthy
-              ? "Healthy"
-              : "Unavailable"}
-          </span>
-
-        </div>
-
-      </div>
-
-      <div className="rounded-2xl border border-border bg-surface p-5">
-
-        <p className="text-xs text-ink-muted">
-          Workspace
-        </p>
-
-        <div className="mt-3 flex items-center gap-2">
-
-          <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-
-          <span className="text-sm font-semibold">
-            Active
-          </span>
-
-        </div>
-
-      </div>
 
     </div>
 
@@ -221,9 +134,11 @@ export default function DeveloperDashboard() {
     {/* Workspace */}
     {/* ====================== */}
 
-    <div className="rounded-2xl border border-border bg-surface">
+    <div className="rounded-2xl border border-border bg-surface shadow-sm">
 
-      <div className="border-b border-border px-5 py-4">
+      <div className="border-b border-border px-5 py-4 flex items-center gap-2">
+
+        <LayoutGrid size={16} className="text-copper" />
 
         <h2 className="text-sm font-semibold">
           Workspace Information
@@ -285,27 +200,29 @@ export default function DeveloperDashboard() {
 
     </div>
 
-    {/* ====================== */}
+    {/* ================================= */}
     {/* API Playground */}
-    {/* ====================== */}
+    {/* ================================= */}
 
-   {/* ================================= */}
-{/* API Playground */}
-{/* ================================= */}
-
-<div className="rounded-2xl border border-border bg-surface overflow-hidden">
+<div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
 
   <div className="border-b border-border px-5 py-4 flex items-center justify-between">
 
-    <div>
+    <div className="flex items-center gap-2">
 
-      <h2 className="text-sm font-semibold">
-        API Playground
-      </h2>
+      <Terminal size={16} className="text-copper" />
 
-      <p className="text-xs text-ink-muted mt-1">
-        Test backend endpoints directly.
-      </p>
+      <div>
+
+        <h2 className="text-sm font-semibold">
+          API Playground
+        </h2>
+
+        <p className="text-xs text-ink-muted mt-1">
+          Test backend endpoints directly.
+        </p>
+
+      </div>
 
     </div>
 
@@ -346,21 +263,25 @@ export default function DeveloperDashboard() {
           Endpoint
         </label>
 
-        <select className="w-full rounded-lg border border-border px-3 py-2 text-sm">
+        <select
+          value={selectedEndpoint}
+          onChange={(e) => setSelectedEndpoint(e.target.value)}
+          className="w-full rounded-lg border border-border px-3 py-2 text-sm bg-surface"
+        >
 
-          <option>
+          <option value="/api/auth/me">
             GET /api/auth/me
           </option>
 
-          <option>
+          <option value="/api/team/members">
             GET /api/team/members
           </option>
 
-          <option>
+          <option value="/api/workspace">
             GET /api/workspace
           </option>
 
-          <option>
+          <option value="/api/assistant">
             GET /api/assistant
           </option>
 
@@ -368,19 +289,18 @@ export default function DeveloperDashboard() {
 
       </div>
 
-      <button className="rounded-lg bg-copper text-white px-5 py-2 text-sm">
-
-        Send Request
-
+      <button
+        onClick={handleRequest}
+        disabled={sending}
+        className="rounded-lg bg-copper text-white px-5 py-2 text-sm disabled:opacity-60"
+      >
+        {sending ? "Sending..." : "Send Request"}
       </button>
 
       <div className="rounded-lg border border-border bg-canvas p-4">
 
-        <pre className="text-xs">
-{`{
-  "status":200,
-  "message":"Success"
-}`}
+        <pre className="text-xs overflow-x-auto">
+{response || `{\n  "status": 200,\n  "message": "Send a request to see the response"\n}`}
         </pre>
 
       </div>
@@ -390,245 +310,50 @@ export default function DeveloperDashboard() {
   )}
 
 </div>
-    {/* ================================= */}
-    {/* Server Metrics */}
-    {/* ================================= */}
-
-    <div className="rounded-2xl border border-border bg-surface">
-
-      <div className="border-b border-border px-5 py-4">
-
-        <h2 className="text-sm font-semibold">
-          Server Metrics
-        </h2>
-
-        <p className="text-xs text-ink-muted mt-1">
-          Live backend performance and server health.
-        </p>
-
-      </div>
-
-      <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-5 p-5">
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            CPU Usage
-          </p>
-
-          <p className="text-2xl font-semibold mt-2">
-            {status?.cpuUsage ?? 0}%
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Memory
-          </p>
-
-          <p className="text-2xl font-semibold mt-2">
-            {status?.memoryUsage ?? 0}%
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Uptime
-          </p>
-
-          <p className="text-2xl font-semibold mt-2">
-            {status?.uptime ?? "0 min"}
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Average Response
-          </p>
-
-          <p className="text-2xl font-semibold mt-2">
-            {status?.responseTime ?? 0} ms
-          </p>
-
-        </div>
-
-      </div>
-
-        </div>
-
-    {/* ================================= */}
-    {/* Environment Information */}
-    {/* ================================= */}
-
-    <div className="rounded-2xl border border-border bg-surface">
-
-      <div className="border-b border-border px-5 py-4">
-
-        <h2 className="text-sm font-semibold">
-          Environment Information
-        </h2>
-
-        <p className="text-xs text-ink-muted mt-1">
-          Current backend environment and deployment information.
-        </p>
-
-      </div>
-
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 p-5">
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Environment
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            {import.meta.env.DEV
-              ? "Development"
-              : "Production"}
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Frontend
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            React + Vite
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Backend
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            Node.js + Express
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Database
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            PostgreSQL
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            ORM
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            Prisma ORM
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Authentication
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            JWT + HttpOnly Cookies
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            AI Provider
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            OpenRouter
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Deployment
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            Render
-          </p>
-
-        </div>
-
-        <div>
-
-          <p className="text-xs text-ink-muted">
-            Version
-          </p>
-
-          <p className="text-sm font-medium mt-2">
-            Relay v1.0.0
-          </p>
-
-        </div>
-
-      </div>
-
-        </div>
 
     {/* ================================= */}
     {/* Live Debug Console */}
     {/* ================================= */}
 
-   {/* ================================= */}
-{/* Live Debug Console */}
-{/* ================================= */}
-
-<div className="rounded-2xl border border-border bg-surface overflow-hidden">
+<div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
 
   <div className="border-b border-border px-5 py-4 flex items-center justify-between">
 
-    <div>
+    <div className="flex items-center gap-2">
 
-      <h2 className="text-sm font-semibold">
-        Live Debug Console
-      </h2>
+      <ScrollText size={16} className="text-copper" />
 
-      <p className="text-xs text-ink-muted mt-1">
-        Monitor backend activity in real time.
-      </p>
+      <div>
+
+        <h2 className="text-sm font-semibold">
+          Live Debug Console
+        </h2>
+
+        <p className="text-xs text-ink-muted mt-1">
+          Widget and API request logs for this workspace.
+        </p>
+
+      </div>
 
     </div>
 
-    {isFree && (
+    <div className="flex items-center gap-2">
+      {!isFree && logsError === "none" && (
+        <button
+          onClick={() => loadLogs(logsPage)}
+          disabled={logsLoading}
+          className="text-[11px] font-medium text-copper hover:text-copper/80 transition disabled:opacity-50"
+        >
+          Refresh
+        </button>
+      )}
 
-      <span className="rounded-full bg-copper/10 text-copper px-2 py-1 text-[10px] font-semibold">
-
-        PRO
-
-      </span>
-
-    )}
+      {isFree && (
+        <span className="rounded-full bg-copper/10 text-copper px-2 py-1 text-[10px] font-semibold">
+          PRO
+        </span>
+      )}
+    </div>
 
   </div>
 
@@ -651,19 +376,74 @@ export default function DeveloperDashboard() {
 
     </div>
 
+  ) : logsError === "not-enabled" ? (
+
+    <div className="p-10 text-center">
+      <p className="text-sm font-medium">
+        Debug Logs are turned off for this workspace.
+      </p>
+      <p className="text-xs text-ink-muted mt-2">
+        Enable "Debug Logs" under Settings → Advanced to start capturing widget and API request activity here.
+      </p>
+    </div>
+
+  ) : logsError === "other" ? (
+
+    <div className="p-10 text-center">
+      <p className="text-sm font-medium text-red-600">
+        Couldn't load logs right now.
+      </p>
+      <button
+        onClick={() => loadLogs(1)}
+        className="mt-3 text-[11px] font-medium text-copper hover:text-copper/80 transition"
+      >
+        Try again
+      </button>
+    </div>
+
   ) : (
 
-    <div className="bg-black text-green-400 font-mono text-xs h-72 overflow-y-auto p-4 space-y-2">
+    <>
+      <div className="bg-black text-green-400 font-mono text-xs h-72 overflow-y-auto p-4 space-y-1.5">
 
-      <div>[12:41:22] Server Started</div>
+        {logsLoading ? (
+          <div className="text-ink-faint">Loading logs...</div>
+        ) : logs.length === 0 ? (
+          <div className="text-ink-faint">
+            No requests logged yet. Traffic to your embedded widget will show up here.
+          </div>
+        ) : (
+          logs.map((log) => (
+            <div key={log.id} className={levelColor(log.level)}>
+              [{formatLogTime(log.createdAt)}] {log.message}
+            </div>
+          ))
+        )}
 
-      <div>[12:41:29] PostgreSQL Connected</div>
+      </div>
 
-      <div>[12:41:36] Authentication Ready</div>
-
-      <div>[12:41:45] OpenRouter Connected</div>
-
-    </div>
+      {logsTotalPages > 1 && (
+        <div className="flex items-center justify-between border-t border-border px-5 py-3">
+          <button
+            onClick={() => loadLogs(logsPage - 1)}
+            disabled={logsPage <= 1 || logsLoading}
+            className="text-[11px] font-medium text-copper hover:text-copper/80 transition disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span className="text-[11px] text-ink-muted">
+            Page {logsPage} of {logsTotalPages}
+          </span>
+          <button
+            onClick={() => loadLogs(logsPage + 1)}
+            disabled={logsPage >= logsTotalPages || logsLoading}
+            className="text-[11px] font-medium text-copper hover:text-copper/80 transition disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
+    </>
 
   )}
 

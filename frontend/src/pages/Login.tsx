@@ -20,7 +20,8 @@ export default function Login() {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate("/dashboard");
+      
+navigate("/select-workspace");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
     } finally {

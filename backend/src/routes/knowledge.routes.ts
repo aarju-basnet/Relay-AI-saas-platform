@@ -8,7 +8,7 @@ import mammoth from "mammoth";
 
 import { requireAuth, AuthRequest } from "@/middleware/auth";
 import { prisma } from "@/config/postgres";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 import { hasActiveKnowledgeBaseAccess } from "@/utils/knowledgeAccess";
 import { chunkText } from "@/utils/chunking";
 
@@ -54,16 +54,17 @@ async function extractText(
 */
 
 router.post(
-  "/upload",
+  "/:organizationId/upload",
   requireAuth,
   upload.single("file"),
   async (req: AuthRequest, res: Response) => {
     try {
-      const membership = await getCurrentMembership(req.auth!.userId);
+      const { organizationId } = req.params;
+      const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
       if (!membership) {
-        return res.status(400).json({
-          error: "You're not part of a workspace yet.",
+        return res.status(403).json({
+          error: "You don't have access to this workspace.",
         });
       }
 
@@ -74,7 +75,7 @@ router.post(
       }
 
       const access = await hasActiveKnowledgeBaseAccess(
-        membership.organizationId
+        organizationId
       );
 
       if (!access.allowed) {
@@ -107,7 +108,7 @@ router.post(
 
       const document = await prisma.knowledgeDocument.create({
         data: {
-          organizationId: membership.organizationId,
+          organizationId,
           name: req.file.originalname,
           fileType,
           status: "READY",
@@ -149,18 +150,19 @@ router.post(
 |--------------------------------------------------------------------------
 */
 
-router.get("/documents", requireAuth, async (req: AuthRequest, res: Response) => {
+router.get("/:organizationId/documents", requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const membership = await getCurrentMembership(req.auth!.userId);
+    const { organizationId } = req.params;
+    const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
-        error: "You're not part of a workspace yet.",
+      return res.status(403).json({
+        error: "You don't have access to this workspace.",
       });
     }
 
     const documents = await prisma.knowledgeDocument.findMany({
-      where: { organizationId: membership.organizationId },
+      where: { organizationId },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { chunks: true } } },
     });
@@ -188,15 +190,16 @@ router.get("/documents", requireAuth, async (req: AuthRequest, res: Response) =>
 */
 
 router.delete(
-  "/documents/:id",
+  "/:organizationId/documents/:id",
   requireAuth,
   async (req: AuthRequest, res: Response) => {
     try {
-      const membership = await getCurrentMembership(req.auth!.userId);
+      const { organizationId } = req.params;
+      const membership = await getMembershipForOrg(req.auth!.userId, organizationId);
 
       if (!membership) {
-        return res.status(400).json({
-          error: "You're not part of a workspace yet.",
+        return res.status(403).json({
+          error: "You don't have access to this workspace.",
         });
       }
 
@@ -209,7 +212,7 @@ router.delete(
       const document = await prisma.knowledgeDocument.findFirst({
         where: {
           id: req.params.id,
-          organizationId: membership.organizationId,
+          organizationId,
         },
       });
 

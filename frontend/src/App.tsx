@@ -1,10 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/Themecontext";
 import { ProtectedRoute, RequireAuth } from "@/components/ProtectedRoute";
 import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
-import CreateWorkspace from "@/pages/CreateWorkspace";
+import CreateWorkspace from "@/pages/Createworkspace";
 import Dashboard from "@/pages/Dashboard";
 import Analytics from "@/pages/Analytics";
 import Team from "@/pages/Team";
@@ -19,19 +20,37 @@ import { PrivacyPolicy } from './pages/PrivacyPolicy';
 import { Terms } from './pages/Terms';
 import { FAQ } from './pages/FAQ';
 import { NotFound } from './pages/NotFound';
+import { PublicOnlyRoute } from "@/components/PublicOnlyRoute";
+import SelectWorkspace from "@/pages/SelectWorkspace";
+import AnalyticsReady from "./pages/foundpage";
 
 export default function App() {
   return (
     <BrowserRouter>
+    <ThemeProvider>
+  
       <AuthProvider>
         <Routes>
+          <Route element={<PublicOnlyRoute />}>
+         
           <Route path="/" element={<Home />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
-          <Route path="/pricing" element={<Pricing />} />
+          
+           </Route>
+           <Route path="/pricing" element={<Pricing />} />
+
+           <Route
+  path="/select-workspace"
+  element={
+    <RequireAuth>
+      <SelectWorkspace />
+    </RequireAuth>
+  }
+/>
           <Route
             path="/onboarding/workspace"
             element={
@@ -56,6 +75,15 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+  path="/analytics-ready"
+  element={
+    <ProtectedRoute>
+      <AnalyticsReady />
+    </ProtectedRoute>
+  }
+/>
           <Route
             path="/team"
             element={
@@ -83,6 +111,8 @@ export default function App() {
       <DemoBillingPortal />
     </ProtectedRoute>
   }
+
+  
 />
 
     <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -94,6 +124,8 @@ export default function App() {
 
         </Routes>
       </AuthProvider>
+          
+    </ThemeProvider>
     </BrowserRouter>
   );
 }

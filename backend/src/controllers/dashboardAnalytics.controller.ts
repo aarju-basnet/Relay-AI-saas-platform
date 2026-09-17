@@ -2,7 +2,7 @@ import { Response } from "express";
 
 import { prisma } from "@/config/postgres";
 import { AuthRequest } from "@/middleware/auth";
-import { getCurrentMembership } from "@/utils/membership";
+import { getMembershipForOrg } from "@/utils/membership";
 
 export async function getDashboardAnalytics(
   req: AuthRequest,
@@ -10,20 +10,18 @@ export async function getDashboardAnalytics(
 ) {
   try {
     const userId = req.auth!.userId;
+    const { organizationId } = req.params;
 
     const membership =
-      await getCurrentMembership(userId);
+      await getMembershipForOrg(userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         success: false,
         message:
-          "You're not part of a workspace yet.",
+          "You don't have access to this workspace.",
       });
     }
-
-    const organizationId =
-      membership.organizationId;
 
     const startOfDay = new Date();
 
@@ -140,20 +138,18 @@ export async function getAnalyticsTimeline(
 ) {
   try {
     const userId = req.auth!.userId;
+    const { organizationId } = req.params;
 
     const membership =
-      await getCurrentMembership(userId);
+      await getMembershipForOrg(userId, organizationId);
 
     if (!membership) {
-      return res.status(400).json({
+      return res.status(403).json({
         success: false,
         message:
-          "You're not part of a workspace yet.",
+          "You don't have access to this workspace.",
       });
     }
-
-    const organizationId =
-      membership.organizationId;
 
     const startOfDay = new Date();
 

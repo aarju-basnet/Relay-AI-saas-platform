@@ -21,7 +21,6 @@ import {
 
 export default function AdvancedSetting() {
   const {
-  developerMode,
   setDeveloperMode,
 } = useAuth();
   const { user } = useAuth();
@@ -188,17 +187,17 @@ export default function AdvancedSetting() {
   setDeveloperMode(value);
 }}
             className={`relative h-6 w-11 rounded-full transition ${
-                developerMode
+                settings.developerMode
                 ? "bg-copper"
                 : "bg-gray-300"
             }`}
           >
 
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                  developerMode
-                  ? "translate-x-5"
-                  : "translate-x-0.5"
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition ${
+                  settings.developerMode
+                  ? "translate-x-0.5"
+                  : "translate-x-5"
               }`}
             />
 
@@ -247,10 +246,10 @@ export default function AdvancedSetting() {
           >
 
             <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition ${
                 settings.debugLogs
-                  ? "translate-x-5"
-                  : "translate-x-0.5"
+                  ? "translate-x-0.5"
+                  : "translate-x-5"
               }`}
             />
 
@@ -338,10 +337,10 @@ export default function AdvancedSetting() {
             >
 
               <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition ${
                   settings.apiAccess
-                    ? "translate-x-5"
-                    : "translate-x-0.5"
+                    ? "translate-x-0.5"
+                    : "translate-x-5"
                 }`}
               />
 
@@ -353,98 +352,27 @@ export default function AdvancedSetting() {
 
         {/* Custom Prompt */}
 
-        <div className="flex items-center justify-between px-5 py-4">
-
-          <div className="flex items-start gap-3">
-
-            <Sparkles
-              size={18}
-              className="text-copper mt-0.5"
-            />
-
-            <div>
-
-              <div className="flex items-center gap-2">
-
-                <p className="text-sm font-medium">
-                  Custom System Prompt
-                </p>
-
-                {isFree && (
-
-                  <span className="rounded-full bg-copper/10 text-copper px-2 py-0.5 text-[10px] font-semibold">
-                    PRO
-                  </span>
-
-                )}
-
-              </div>
-
-              <p className="text-xs text-ink-muted mt-1">
-                Customize your AI assistant's personality and behavior.
-              </p>
-
-            </div>
-
-          </div>
-
-          {isFree ? (
-
-            <Lock
-              size={18}
-              className="text-ink-faint"
-            />
-
-          ) : (
-
-            <button
-              disabled={saving}
-              onClick={() =>
-                save(
-                  "customPrompt",
-                  !settings.customPrompt
-                )
-              }
-              className={`relative h-6 w-11 rounded-full transition ${
-                settings.customPrompt
-                  ? "bg-copper"
-                  : "bg-gray-300"
-              }`}
-            >
-
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${
-                  settings.customPrompt
-                    ? "translate-x-5"
-                    : "translate-x-0.5"
-                }`}
-              />
-
-            </button>
-
-          )}
-
-        </div>
+        
 
       </div>
             {/* Danger Zone */}
 
-      <div className="rounded-2xl border border-red-200 bg-red-50 shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 shadow-sm overflow-hidden">
 
-        <div className="border-b border-red-200 px-5 py-4 flex items-center gap-2">
+        <div className="border-b border-red-200 dark:border-red-900 px-5 py-4 flex items-center gap-2">
 
           <Trash2
             size={18}
-            className="text-red-600"
+            className="text-red-600 dark:text-red-400"
           />
 
           <div>
 
-            <h2 className="text-sm font-semibold text-red-700">
+            <h2 className="text-sm font-semibold text-red-700 dark:text-red-400">
               Danger Zone
             </h2>
 
-            <p className="text-xs text-red-500 mt-1">
+            <p className="text-xs text-red-500 dark:text-red-400/80 mt-1">
               These actions are permanent and cannot be undone.
             </p>
 
@@ -456,11 +384,11 @@ export default function AdvancedSetting() {
 
           <div>
 
-            <p className="text-sm font-medium text-red-700">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">
               Delete Workspace
             </p>
 
-            <p className="text-xs text-red-500 mt-1">
+            <p className="text-xs text-red-500 dark:text-red-400/80 mt-1">
               Permanently delete your workspace, assistants,
               conversations, team members and every stored setting.
             </p>

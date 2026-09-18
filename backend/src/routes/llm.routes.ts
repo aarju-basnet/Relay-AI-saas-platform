@@ -4,7 +4,7 @@ import { Conversation } from "@/models/Conversation";
 import { redis } from "@/config/redis";
 import { prisma } from "@/config/postgres";
 import { getMembershipForOrg } from "@/utils/membership";
-import { buildDefaultSystemPrompt } from "@/routes/assistant.routes";
+import { buildDefaultSystemPrompt } from "@/routes/Assistant.routes";
 import { generateAIResponse } from "@/services/llm.service";
 import { findRelevantChunks } from "@/utils/retrieval";
 

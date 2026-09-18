@@ -20,7 +20,7 @@ const RESPONSE_STYLES = ["Professional", "Friendly", "Formal", "Short", "Detaile
 const LANGUAGES = ["English", "Nepali", "Hindi", "Japanese"];
 
 export default function AssistantSettings() {
- const { user, activeWorkspace } = useAuth();
+ const { activeWorkspace } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);

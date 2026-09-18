@@ -147,15 +147,13 @@ export interface Assistant {
 }
 
 export interface DashboardAnalytics {
-  business: string;
-  date: string;
-
   visitors: number;
   sessions: number;
   pageViews: number;
-  clicks: number;
-  chats: number;
-  messages: number;
+  buttonClicks: number;
+  chatOpened: number;
+  messagesSent: number;
+  messagesReceived: number;
   leads: number;
   purchases: number;
 }

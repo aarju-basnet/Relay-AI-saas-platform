@@ -23,7 +23,7 @@ export default function AdvancedSetting() {
   const {
   setDeveloperMode,
 } = useAuth();
-   const { user, activeWorkspace } = useAuth();
+   const { activeWorkspace } = useAuth();
   const [settings, setSettings] =
     useState<AdvancedSettings | null>(null);
     

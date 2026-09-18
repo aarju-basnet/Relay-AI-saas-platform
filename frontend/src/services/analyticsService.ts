@@ -1,17 +1,6 @@
-import { api, ApiError } from "@/lib/api";
+import { api, ApiError, DashboardAnalytics } from "@/lib/api";
+export type { DashboardAnalytics };
 
-export interface DashboardAnalytics {
-  business: string;
-  date: string;
-  visitors: number;
-  sessions: number;
-  pageViews: number;
-  clicks: number;
-  chats: number;
-  messages: number;
-  leads: number;
-  purchases: number;
-}
 
 export interface AnalyticsTimelineItem {
   hour: number;
@@ -23,21 +12,9 @@ export interface AnalyticsTimelineItem {
 }
 
 export interface AnalyticsAISummary {
-  analytics: {
-    business: string;
-    date: string;
-    visitors: number;
-    sessions: number;
-    pageViews: number;
-    clicks: number;
-    chats: number;
-    messages: number;
-    leads: number;
-    purchases: number;
-  };
+  analytics: DashboardAnalytics;
   summary: string;
 }
-
 export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
   const result = await api.getDashboardAnalytics();
   return result.data;

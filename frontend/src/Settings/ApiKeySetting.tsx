@@ -37,7 +37,7 @@ interface ApiKey {
 // The snippet shown to business owners must always point at your real
 // production backend, since it runs on THEIR site, not yours.
 const WIDGET_API_BASE_URL =
-  import.meta.env.VITE_WIDGET_API_URL || "https://relay-backend.onrender.com";
+  import.meta.env.VITE_WIDGET_API_URL;
 
 function buildEmbedSnippet(key: string): string {
   return `<link rel="stylesheet" href="${WIDGET_API_BASE_URL}/widget.css" />

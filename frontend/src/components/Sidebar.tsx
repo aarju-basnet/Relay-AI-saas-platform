@@ -18,14 +18,14 @@ import {
   X,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-
+import type { DashboardPage } from "@/pages/Dashboard";
 import { Conversation, api, ApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Logo, RelayMark } from "@/components/Logo";
 
 interface SidebarProps {
-  page: string;
-  setPage: (page: string) => void;
+  page: DashboardPage;
+  setPage: (page: DashboardPage) => void;
   settingsPage: string;
   setSettingsPage: (page: string) => void;
   developerMode?: boolean;
@@ -191,18 +191,18 @@ export function Sidebar({
     });
   }
 
-  const NAVIGATION = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "inbox", label: "Inbox", icon: MessageSquare },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "knowledge", label: "Knowledge Base", icon: BookOpen },
-    { id: "team", label: "Team", icon: Users },
-    { id: "billing", label: "Billing", icon: CreditCard },
-    { id: "settings", label: "Settings", icon: Settings },
-    ...(developerMode
-      ? [{ id: "developer", label: "Developer", icon: Wrench }]
-      : []),
-  ];
+  const NAVIGATION: { id: DashboardPage; label: string; icon: typeof LayoutDashboard }[] = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "inbox", label: "Inbox", icon: MessageSquare },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "knowledge", label: "Knowledge Base", icon: BookOpen },
+  { id: "team", label: "Team", icon: Users },
+  { id: "billing", label: "Billing", icon: CreditCard },
+  { id: "settings", label: "Settings", icon: Settings },
+  ...(developerMode
+    ? [{ id: "developer" as const, label: "Developer", icon: Wrench }]
+    : []),
+];
 
   const railWidth = expanded ? RAIL_EXPANDED_WIDTH : RAIL_COLLAPSED_WIDTH;
   const totalReservedWidth =

@@ -27,7 +27,7 @@ import {
 
 import { Bot, Sparkles, Zap, Cpu, Bell } from "lucide-react";
 
-type DashboardPage =
+export type DashboardPage =
   | "dashboard"
   | "inbox"
   | "analytics"

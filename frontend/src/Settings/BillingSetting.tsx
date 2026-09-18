@@ -12,7 +12,7 @@ import { api, ApiError } from "@/lib/api";
 import EsewaRedirectForm from "@/components/EsewaRedirectForm";
 
 export default function BillingSetting() {
-  const { user, refreshUser } = useAuth();
+  const { user, activeWorkspace } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -36,12 +36,15 @@ export default function BillingSetting() {
   }, [searchParams]);
 
   function upgrade(interval: "month" | "year") {
-    navigate("/demo-checkout", { state: { interval } });
-  }
+  if (interval === "month") setLoadingMonthly(true);
+  else setLoadingYearly(true);
+  navigate("/demo-checkout", { state: { interval } });
+}
 
-  function manageBilling() {
-    navigate("/demo-billing");
-  }
+function manageBilling() {
+  setOpeningPortal(true);
+  navigate("/demo-billing");
+}
 
   async function handlePayWithEsewa(interval: "month" | "year") {
     setPayError(null);
@@ -111,7 +114,7 @@ export default function BillingSetting() {
             <div>
               <p className="text-[10px] uppercase text-ink-faint">Workspace</p>
               <p className="mt-1 text-xs font-semibold">
-                {user?.workspace?.name ?? "No Workspace"}
+                 {activeWorkspace?.name ?? "No Workspace"}
               </p>
             </div>
           </div>
@@ -273,21 +276,40 @@ export default function BillingSetting() {
                 "Open Billing Portal"
               )}
             </button>
+// before
+<button
+  onClick={() => navigate("/demo-billing")}
+  disabled={cancelling || user?.plan !== "PRO"}
+  className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+>
+  {cancelling ? (
+    <span className="flex items-center gap-1.5">
+      <Loader2 size={12} className="animate-spin" />
+      Cancelling...
+    </span>
+  ) : (
+    "Cancel Subscription"
+  )}
+</button>
 
-            <button
-              onClick={() => navigate("/demo-billing")}
-              disabled={cancelling || user?.plan !== "PRO"}
-              className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {cancelling ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" />
-                  Cancelling...
-                </span>
-              ) : (
-                "Cancel Subscription"
-              )}
-            </button>
+// after
+<button
+  onClick={() => {
+    setCancelling(true);
+    navigate("/demo-billing");
+  }}
+  disabled={cancelling || user?.plan !== "PRO"}
+  className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+>
+  {cancelling ? (
+    <span className="flex items-center gap-1.5">
+      <Loader2 size={12} className="animate-spin" />
+      Cancelling...
+    </span>
+  ) : (
+    "Cancel Subscription"
+  )}
+</button>
           </div>
         </div>
 

@@ -23,7 +23,7 @@ export default function AdvancedSetting() {
   const {
   setDeveloperMode,
 } = useAuth();
-  const { user } = useAuth();
+   const { user, activeWorkspace } = useAuth();
   const [settings, setSettings] =
     useState<AdvancedSettings | null>(null);
     
@@ -394,8 +394,7 @@ export default function AdvancedSetting() {
             </p>
 
           </div>
-
-          {user?.workspace?.role === "OWNER" && (
+            {activeWorkspace?.role === "OWNER" && (
   <button
     onClick={handleDeleteWorkspace}
     className="rounded-lg bg-red-600 hover:bg-red-700 text-white px-5 py-2 text-xs font-medium transition"

@@ -20,13 +20,13 @@ const RESPONSE_STYLES = ["Professional", "Friendly", "Formal", "Short", "Detaile
 const LANGUAGES = ["English", "Nepali", "Hindi", "Japanese"];
 
 export default function AssistantSettings() {
-  const { user } = useAuth();
+ const { user, activeWorkspace } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const canEdit = user?.workspace?.role === "OWNER" || user?.workspace?.role === "ADMIN";
+const canEdit = activeWorkspace?.role === "OWNER" || activeWorkspace?.role === "ADMIN";
 
   const [name, setName] = useState("");
   const [purposes, setPurposes] = useState<string[]>([]);

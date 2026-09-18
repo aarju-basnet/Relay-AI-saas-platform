@@ -21,7 +21,7 @@ function levelColor(level: string): string {
 }
 
 export default function DeveloperDashboard() {
-  const { user } = useAuth();
+   const { user, activeWorkspace } = useAuth();
   const isFree = user?.plan === "FREE";
 
   const [selectedEndpoint, setSelectedEndpoint] =
@@ -155,7 +155,7 @@ export default function DeveloperDashboard() {
           </p>
 
           <p className="text-sm font-medium mt-1">
-            {user?.workspace?.name}
+             {activeWorkspace?.name}
           </p>
 
         </div>
@@ -179,7 +179,7 @@ export default function DeveloperDashboard() {
           </p>
 
           <p className="text-sm font-medium mt-1">
-            {user?.workspace?.role}
+             {activeWorkspace?.role}
           </p>
 
         </div>

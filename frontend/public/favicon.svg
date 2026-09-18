@@ -1,0 +1,11 @@
+<svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path
+    d="M45 8 C62 28 68 45 62 60 C58 72 47 80 45 88 C43 80 32 72 28 60 C22 45 28 28 45 8 Z"
+    fill="#15803d"
+  />
+  <path
+    d="M42 20 C50 32 53 42 50 52 C48 60 43 66 42 72 C41 66 36 60 34 52 C31 42 34 32 42 20 Z"
+    fill="white"
+    opacity="0.35"
+  />
+</svg>

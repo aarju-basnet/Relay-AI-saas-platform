@@ -400,11 +400,11 @@ deleteWorkspace,
 
   getWorkspaceSettings: () => request<{ workspace: WorkspaceSettings }>(`/api/workspace/${requireOrgId()}`),
 
-  updateWorkspaceSettings: (data: Partial<Pick<WorkspaceSettings, "logoUrl" | "website" | "businessEmail" | "industry" | "companySize" | "country" | "timeZone">>) =>
-    request<{ workspace: WorkspaceSettings }>(`/api/workspace/${requireOrgId()}`, {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }),
+  updateWorkspaceSettings: (data: Partial<Pick<WorkspaceSettings, "name" | "logoUrl" | "website" | "businessEmail" | "industry" | "companySize" | "country" | "timeZone">>) =>
+  request<{ workspace: WorkspaceSettings }>(`/api/workspace/${requireOrgId()}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  }),
 
   getAssistant: () => request<{ assistant: Assistant }>(`/api/assistant/${requireOrgId()}`),
 

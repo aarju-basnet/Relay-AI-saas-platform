@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Save, Building2, Globe, MapPin, Loader2, CheckCircle2, AlertCircle, Link2, Upload, X } from "lucide-react";
-import { api, ApiError, WorkspaceSettings } from "@/lib/api";
+import { api, ApiError} from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 const INDUSTRIES = [
@@ -11,7 +11,7 @@ const INDUSTRIES = [
 
 const COMPANY_SIZES = ["Just Me", "2-10", "11-50", "51-200", "201-500", "500+"];
 
-const MAX_LOGO_SIZE_BYTES = 500 * 1024; // 500KB
+const MAX_LOGO_SIZE_BYTES = 500 * 1024; 
 
 export default function WorkspaceSettingsCard() {
   const [loading, setLoading] = useState(true);
@@ -30,6 +30,13 @@ export default function WorkspaceSettingsCard() {
   const [timeZone, setTimeZone] = useState("");
 const { refreshUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  if (loading) {
+  return (
+    <div className="p-8 text-sm text-ink-muted">
+      Loading Workspace Settings...
+    </div>
+  );
+}
 
   useEffect(() => {
     api.getWorkspaceSettings()

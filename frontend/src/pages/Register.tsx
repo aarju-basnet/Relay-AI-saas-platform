@@ -14,7 +14,7 @@ export default function Register() {
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const { register } = useAuth();
+  const { register, createWorkspace } = useAuth();
   const navigate = useNavigate();
 
   // Password validation checks
@@ -42,7 +42,8 @@ export default function Register() {
 
     setSubmitting(true);
     try {
-      await register(email, password, businessName, name || undefined);
+     await register(email, password, name || undefined);
+await createWorkspace(businessName);
 navigate("/select-workspace");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");

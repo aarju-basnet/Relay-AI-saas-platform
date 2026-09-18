@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  Bot,
+  
   MessageSquare,
   TrendingUp,
   Users,
-  Activity,
-  AlertTriangle,
+  
 } from "lucide-react";
 
 import { DashboardOverview as DashboardOverviewType } from "@/lib/api";

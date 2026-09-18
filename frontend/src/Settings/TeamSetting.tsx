@@ -12,7 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api, ApiError, TeamMember } from "@/lib/api";
 
 export default function TeamSetting() {
-  const { user } = useAuth();
+  const { user, activeWorkspace } = useAuth();
 
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [seatCap, setSeatCap] = useState(2);
@@ -24,9 +24,9 @@ export default function TeamSetting() {
   const [inviteError, setInviteError] = useState("");
   const [inviteSuccess, setInviteSuccess] = useState(false);
 
-  const canManage =
-    user?.workspace?.role === "OWNER" || user?.workspace?.role === "ADMIN";
-  const isOwner = user?.workspace?.role === "OWNER";
+ const canManage =
+  activeWorkspace?.role === "OWNER" || activeWorkspace?.role === "ADMIN";
+const isOwner = activeWorkspace?.role === "OWNER";
 
   const seatsUsed = members.length;
   const seatsFull = seatsUsed >= seatCap;

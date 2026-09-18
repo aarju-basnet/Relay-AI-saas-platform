@@ -1,13 +1,14 @@
 import { api, ApiError } from "@/lib/api";
 
 export interface DashboardAnalytics {
+  business: string;
+  date: string;
   visitors: number;
   sessions: number;
   pageViews: number;
-  buttonClicks: number;
-  chatOpened: number;
-  messagesSent: number;
-  messagesReceived: number;
+  clicks: number;
+  chats: number;
+  messages: number;
   leads: number;
   purchases: number;
 }

@@ -28,15 +28,8 @@ export default function WorkspaceSettingsCard() {
   const [companySize, setCompanySize] = useState("");
   const [country, setCountry] = useState("");
   const [timeZone, setTimeZone] = useState("");
-const { refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  if (loading) {
-  return (
-    <div className="p-8 text-sm text-ink-muted">
-      Loading Workspace Settings...
-    </div>
-  );
-}
 
   useEffect(() => {
     api.getWorkspaceSettings()
@@ -52,6 +45,16 @@ const { refreshUser } = useAuth();
       })
       .finally(() => setLoading(false));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="p-8 text-sm text-ink-muted">
+        Loading Workspace Settings...
+      </div>
+    );
+  }
+
+  // ...rest of the component (handleFileSelect, clearLogo, handleSubmit, return JSX) unchanged
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];

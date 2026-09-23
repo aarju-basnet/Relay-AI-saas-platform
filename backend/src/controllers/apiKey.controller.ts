@@ -11,7 +11,7 @@ export async function createApiKey(
   res: Response
 ) {
   try {
-    const { organizationId, name } = req.body;
+    const { organizationId, name, type } = req.body;
 
     if (!req.auth) {
       return res.status(401).json({
@@ -22,17 +22,14 @@ export async function createApiKey(
 
     const userId = req.auth.userId;
 
-    if (!organizationId || !name) {
+    if (!organizationId || !name || !type) {
       return res.status(400).json({
         success: false,
-        message: "Organization and name are required.",
+        message: "Organization, name, and type are required.",
       });
     }
 
-    const membership = await getMembership(
-      userId,
-      organizationId
-    );
+    const membership = await getMembership(userId, organizationId);
 
     if (!membership) {
       return res.status(403).json({
@@ -41,12 +38,9 @@ export async function createApiKey(
       });
     }
 
-    const organization =
-      await prisma.organization.findUnique({
-        where: {
-          id: organizationId,
-        },
-      });
+    const organization = await prisma.organization.findUnique({
+      where: { id: organizationId },
+    });
 
     if (!organization) {
       return res.status(404).json({
@@ -55,33 +49,15 @@ export async function createApiKey(
       });
     }
 
-    if (organization.plan === "FREE") {
+    if (type === "ASSISTANT" && organization.plan === "FREE") {
       return res.status(403).json({
         success: false,
-        message:
-          "Upgrade this business to Pro before generating an API Key.",
+        message: "Upgrade this business to Pro before generating an Assistant API Key.",
       });
     }
 
-  // UPDATE THIS BLOCK in createApiKey:
-//const existingKey = await prisma.apiKey.findFirst({
- // where: {
-   // organizationId,
-   // revoked: false, // <-- Only block if an ACTIVE key currently exists
- // },
-//});
-
-//if (existingKey) {
- // return res.status(400).json({
-   // success: false,
-   // message: "This business already has an active API Key. Revoke it before generating a new one.",
- // });
-//}
-
     const apiKey = generateApiKey();
-
     const hashedKey = hashApiKey(apiKey);
-
     const prefix = getPrefix(apiKey);
 
     await prisma.apiKey.create({
@@ -89,6 +65,7 @@ export async function createApiKey(
         name,
         prefix,
         hashedKey,
+        type,
         organizationId,
         createdById: userId,
       },
@@ -97,13 +74,11 @@ export async function createApiKey(
     return res.status(201).json({
       success: true,
       apiKey,
-      message:
-        "Copy this API Key now. It will never be shown again.",
+      message: "Copy this API Key now. It will never be shown again.",
     });
 
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to create API Key.",
@@ -118,19 +93,15 @@ export async function getApiKeys(
 ) {
   try {
     const userId = req.auth!.userId;
-
     const { organizationId } = req.params;
+    const { type } = req.query as { type?: "ANALYTICS" | "ASSISTANT" };
 
-    const membership = await getMembership(
-      userId,
-      organizationId
-    );
+    const membership = await getMembership(userId, organizationId);
 
     if (!membership) {
       return res.status(403).json({
         success: false,
-        message:
-          "You are not a member of this organization.",
+        message: "You are not a member of this organization.",
       });
     }
 
@@ -138,6 +109,7 @@ export async function getApiKeys(
       where: {
         organizationId,
         revoked: false,
+        ...(type ? { type } : {}),
       },
       orderBy: {
         createdAt: "desc",
@@ -146,6 +118,7 @@ export async function getApiKeys(
         id: true,
         name: true,
         prefix: true,
+        type: true,
         revoked: true,
         createdAt: true,
         lastUsed: true,
@@ -165,7 +138,6 @@ export async function getApiKeys(
     });
   } catch (error) {
     console.error(error);
-
     return res.status(500).json({
       success: false,
       message: "Failed to load API keys.",

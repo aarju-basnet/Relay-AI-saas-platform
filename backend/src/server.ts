@@ -67,6 +67,18 @@ app.use(
 );
 
 
+app.get("/debug-brevo-key", (req, res) => {
+  const key = process.env.BREVO_API_KEY || "NOT SET";
+  res.json({
+    length: key.length,
+    first10: key.slice(0, 10),
+    last10: key.slice(-10),
+    hasLeadingSpace: key.startsWith(" "),
+    hasTrailingSpace: key.endsWith(" "),
+    hasNewline: key.includes("\n"),
+  });
+});
+
 app.use("/api/widget", cors(), debugLogger, widgetRoutes);
 
 // Global CORS restriction applied to all remaining routes below
@@ -92,6 +104,8 @@ app.use("/api/notifications", notificationRoutes);
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", redis: redis.status });
 });
+
+
 
 // --- Boot sequence ---
 async function start() {

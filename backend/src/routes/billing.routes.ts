@@ -15,15 +15,9 @@ const router = Router();
 const CLIENT_URL =
   process.env.CLIENT_URL 
 
-/*
-|--------------------------------------------------------------------------
-| Create Checkout Session
-|--------------------------------------------------------------------------
-|
-| Instead of creating a real Stripe Checkout Session,
-| we redirect the user to our own Demo Checkout page.
-|
-*/
+function isOwner(role: string): boolean {
+  return role === "OWNER";
+}
 
 router.post(
   "/:organizationId/create-checkout-session",
@@ -38,6 +32,12 @@ router.post(
       if (!membership) {
         return res.status(403).json({
           error: "You don't have access to this workspace.",
+        });
+      }
+
+      if (!isOwner(membership.role)) {
+        return res.status(403).json({
+          error: "Only the workspace owner can manage billing.",
         });
       }
 
@@ -71,20 +71,6 @@ router.post("/create-portal-session", requireAuth, async (req, res) => {
   res.json({ url: `${CLIENT_URL}/demo-billing` });
 });
 
-/*
-|--------------------------------------------------------------------------
-| Complete Demo Payment
-|--------------------------------------------------------------------------
-|
-| This endpoint is called ONLY after the user presses
-| "Complete Payment" on the Demo Checkout page.
-|
-| IMPORTANT: plan lives on BOTH User (personal AI-chat access) and
-| Organization (workspace-level features like API keys). Both must be
-| updated together, in one transaction, or they can drift out of sync.
-|
-*/
-
 router.post(
   "/:organizationId/demo-upgrade",
   requireAuth,
@@ -99,6 +85,12 @@ router.post(
       if (!membership) {
         return res.status(403).json({
           error: "You don't have access to this workspace.",
+        });
+      }
+
+      if (!isOwner(membership.role)) {
+        return res.status(403).json({
+          error: "Only the workspace owner can manage billing.",
         });
       }
 
@@ -129,12 +121,6 @@ router.post(
   }
 );
 
-/*
-|--------------------------------------------------------------------------
-| Current Billing
-|--------------------------------------------------------------------------
-*/
-
 router.get(
   "/:organizationId/current",
   requireAuth,
@@ -157,21 +143,16 @@ router.get(
         return res.status(403).json({ error: "You don't have access to this workspace." });
       }
 
-      let organizationPlan: string | null = null;
-
-      if (membership) {
-        const organization = await prisma.organization.findUnique({
-          where: { id: membership.organizationId },
-          select: { plan: true },
-        });
-        organizationPlan = organization?.plan ?? null;
-      }
+      const organization = await prisma.organization.findUnique({
+        where: { id: membership.organizationId },
+        select: { plan: true, name: true },
+      });
 
       return res.json({
         plan: user.plan,
-        organizationPlan,
-        workspace: membership?.organizationName ?? null,
-        role: membership?.role ?? null,
+        organizationPlan: organization?.plan ?? null,
+        workspace: organization?.name ?? null,
+        role: membership.role,
       });
     } catch (err) {
       console.error(err);
@@ -179,12 +160,6 @@ router.get(
     }
   }
 );
-
-/*
-|--------------------------------------------------------------------------
-| Cancel Subscription
-|--------------------------------------------------------------------------
-*/
 
 router.post(
   "/:organizationId/cancel",
@@ -202,16 +177,22 @@ router.post(
         return res.status(404).json({ error: "User not found" });
       }
 
-      if (user.plan === "FREE") {
-        return res.status(400).json({
-          error: "You are already on the Free plan.",
-        });
-      }
-
       const membership = await getMembershipForOrg(userId, organizationId);
 
       if (!membership) {
         return res.status(403).json({ error: "You don't have access to this workspace." });
+      }
+
+      if (!isOwner(membership.role)) {
+        return res.status(403).json({
+          error: "Only the workspace owner can cancel the subscription.",
+        });
+      }
+
+      if (user.plan === "FREE") {
+        return res.status(400).json({
+          error: "You are already on the Free plan.",
+        });
       }
 
       await prisma.$transaction([
@@ -219,14 +200,10 @@ router.post(
           where: { id: userId },
           data: { plan: "FREE" },
         }),
-        ...(membership
-          ? [
-              prisma.organization.update({
-                where: { id: membership.organizationId },
-                data: { plan: "FREE" },
-              }),
-            ]
-          : []),
+        prisma.organization.update({
+          where: { id: membership.organizationId },
+          data: { plan: "FREE" },
+        }),
       ]);
 
       return res.json({
@@ -242,10 +219,6 @@ router.post(
     }
   }
 );
-
-/* -------------------------------------------------------------------------- */
-/*                                   eSewa                                    */
-/* -------------------------------------------------------------------------- */
 
 function getPlanPriceNpr(interval: "month" | "year"): number {
   return interval === "year"
@@ -282,6 +255,12 @@ router.post(
       const membership = await getMembershipForOrg(userId, organizationId);
       if (!membership) {
         return res.status(403).json({ error: "You don't have access to this workspace." });
+      }
+
+      if (!isOwner(membership.role)) {
+        return res.status(403).json({
+          error: "Only the workspace owner can manage billing.",
+        });
       }
 
       const amountNpr = getPlanPriceNpr(interval);
@@ -357,10 +336,10 @@ router.get("/esewa/success", async (req: Request, res: Response) => {
     });
 
     await activateProPlan(
-  payment.userId,
-  payment.organizationId,
-  payment.interval as "MONTHLY" | "YEARLY"
-);
+      payment.userId,
+      payment.organizationId,
+      payment.interval as "MONTHLY" | "YEARLY"
+    );
     return res.redirect(`${CLIENT_URL}/dashboard?upgraded=true`);
   } catch (err) {
     console.error(err);
@@ -371,10 +350,6 @@ router.get("/esewa/success", async (req: Request, res: Response) => {
 router.get("/esewa/failure", async (_req: Request, res: Response) => {
   return res.redirect(`${CLIENT_URL}/billing?payment=failed`);
 });
-
-/* -------------------------------------------------------------------------- */
-/*                                  Khalti                                    */
-/* -------------------------------------------------------------------------- */
 
 router.post(
   "/:organizationId/khalti/initiate",
@@ -388,6 +363,12 @@ router.post(
       const membership = await getMembershipForOrg(userId, organizationId);
       if (!membership) {
         return res.status(403).json({ error: "You don't have access to this workspace." });
+      }
+
+      if (!isOwner(membership.role)) {
+        return res.status(403).json({
+          error: "Only the workspace owner can manage billing.",
+        });
       }
 
       const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -453,10 +434,10 @@ router.get("/khalti/callback", async (req: Request, res: Response) => {
     });
 
     await activateProPlan(
-  payment.userId,
-  payment.organizationId,
-  payment.interval as "MONTHLY" | "YEARLY"
-);
+      payment.userId,
+      payment.organizationId,
+      payment.interval as "MONTHLY" | "YEARLY"
+    );
 
     return res.redirect(`${CLIENT_URL}/dashboard?upgraded=true`);
   } catch (err) {

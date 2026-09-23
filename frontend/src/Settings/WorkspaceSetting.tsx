@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Save, Building2, Globe, MapPin, Loader2, CheckCircle2, AlertCircle, Link2, Upload, X } from "lucide-react";
-import { api, ApiError} from "@/lib/api";
+import { Save, Building2, Globe, MapPin, Loader2, CheckCircle2, AlertCircle, Link2, Upload, X, Lock } from "lucide-react";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 
 const INDUSTRIES = [
@@ -11,7 +11,7 @@ const INDUSTRIES = [
 
 const COMPANY_SIZES = ["Just Me", "2-10", "11-50", "51-200", "201-500", "500+"];
 
-const MAX_LOGO_SIZE_BYTES = 500 * 1024; 
+const MAX_LOGO_SIZE_BYTES = 500 * 1024;
 
 export default function WorkspaceSettingsCard() {
   const [loading, setLoading] = useState(true);
@@ -28,8 +28,11 @@ export default function WorkspaceSettingsCard() {
   const [companySize, setCompanySize] = useState("");
   const [country, setCountry] = useState("");
   const [timeZone, setTimeZone] = useState("");
-  const { refreshUser } = useAuth();
+  const { refreshUser, activeWorkspace } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const canManage =
+    activeWorkspace?.role === "OWNER" || activeWorkspace?.role === "ADMIN";
 
   useEffect(() => {
     api.getWorkspaceSettings()
@@ -53,8 +56,6 @@ export default function WorkspaceSettingsCard() {
       </div>
     );
   }
-
-  // ...rest of the component (handleFileSelect, clearLogo, handleSubmit, return JSX) unchanged
 
   function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -87,35 +88,46 @@ export default function WorkspaceSettingsCard() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
- async function handleSubmit(e: FormEvent) {
-  e.preventDefault();
-  setSaving(true);
-  setSaved(false);
-  setError("");
-  try {
-    await api.updateWorkspaceSettings({
-      name,
-      logoUrl: logoUrl || null,
-      website: website || null,
-      businessEmail: businessEmail || null,
-      industry: industry || undefined,
-      companySize: companySize || undefined,
-      country,
-      timeZone,
-    });
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canManage) return;
+    setSaving(true);
+    setSaved(false);
+    setError("");
+    try {
+      await api.updateWorkspaceSettings({
+        name,
+        logoUrl: logoUrl || null,
+        website: website || null,
+        businessEmail: businessEmail || null,
+        industry: industry || undefined,
+        companySize: companySize || undefined,
+        country,
+        timeZone,
+      });
 
-    await refreshUser(); // ← syncs Dashboard header instantly
+      await refreshUser();
 
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  } catch (err) {
-    setError(err instanceof ApiError ? err.message : "Couldn't save workspace.");
-  } finally {
-    setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't save workspace.");
+    } finally {
+      setSaving(false);
+    }
   }
-}
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+
+      {!canManage && (
+        <div className="rounded-xl border border-border bg-canvas px-4 py-3 flex items-center gap-2">
+          <Lock size={14} className="text-ink-faint" />
+          <p className="text-xs text-ink-muted">
+            Only owners and admins can edit workspace settings. You can view these details below.
+          </p>
+        </div>
+      )}
 
       {/* ── WORKSPACE INFORMATION ── */}
 
@@ -151,7 +163,8 @@ export default function WorkspaceSettingsCard() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Acme Inc."
             />
 
@@ -171,8 +184,9 @@ export default function WorkspaceSettingsCard() {
             <div className="flex items-center gap-1 rounded-lg border border-border bg-canvas p-1 mb-2.5">
               <button
                 type="button"
+                disabled={!canManage}
                 onClick={() => setLogoMode("url")}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium transition ${
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium transition disabled:opacity-60 disabled:cursor-not-allowed ${
                   logoMode === "url"
                     ? "bg-surface shadow-sm text-ink"
                     : "text-ink-muted hover:text-ink"
@@ -183,8 +197,9 @@ export default function WorkspaceSettingsCard() {
               </button>
               <button
                 type="button"
+                disabled={!canManage}
                 onClick={() => setLogoMode("upload")}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium transition ${
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[11px] font-medium transition disabled:opacity-60 disabled:cursor-not-allowed ${
                   logoMode === "upload"
                     ? "bg-surface shadow-sm text-ink"
                     : "text-ink-muted hover:text-ink"
@@ -201,7 +216,8 @@ export default function WorkspaceSettingsCard() {
                   type="url"
                   value={logoUrl.startsWith("data:") ? "" : logoUrl}
                   onChange={(e) => setLogoUrl(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+                  disabled={!canManage}
+                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="https://company.com/logo.png"
                 />
                 <p className="text-[11px] text-ink-muted mt-1.5">
@@ -214,8 +230,9 @@ export default function WorkspaceSettingsCard() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  disabled={!canManage}
                   onChange={handleFileSelect}
-                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none file:mr-3 file:rounded-md file:border-0 file:bg-copper/10 file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-copper hover:file:bg-copper/20 transition"
+                  className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none file:mr-3 file:rounded-md file:border-0 file:bg-copper/10 file:px-3 file:py-1.5 file:text-[11px] file:font-medium file:text-copper hover:file:bg-copper/20 transition disabled:opacity-60 disabled:cursor-not-allowed"
                 />
                 <p className="text-[11px] text-ink-muted mt-1.5">
                   PNG, JPG, or SVG. Max 500KB.
@@ -233,13 +250,15 @@ export default function WorkspaceSettingsCard() {
                 <span className="flex-1 text-[11px] text-ink-muted truncate">
                   {logoUrl.startsWith("data:") ? "Uploaded image" : logoUrl}
                 </span>
-                <button
-                  type="button"
-                  onClick={clearLogo}
-                  className="text-ink-faint hover:text-red-500 transition"
-                >
-                  <X size={14} />
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    onClick={clearLogo}
+                    className="text-ink-faint hover:text-red-500 transition"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             )}
 
@@ -283,7 +302,8 @@ export default function WorkspaceSettingsCard() {
               type="email"
               value={businessEmail}
               onChange={(e) => setBusinessEmail(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="support@company.com"
             />
 
@@ -303,7 +323,8 @@ export default function WorkspaceSettingsCard() {
               type="url"
               value={website}
               onChange={(e) => setWebsite(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="https://company.com"
             />
 
@@ -322,7 +343,8 @@ export default function WorkspaceSettingsCard() {
             <select
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="">Select Industry</option>
               {INDUSTRIES.map((item) => (
@@ -345,7 +367,8 @@ export default function WorkspaceSettingsCard() {
             <select
               value={companySize}
               onChange={(e) => setCompanySize(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <option value="">Select Company Size</option>
               {COMPANY_SIZES.map((item) => (
@@ -397,7 +420,8 @@ export default function WorkspaceSettingsCard() {
               type="text"
               value={country}
               onChange={(e) => setCountry(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Nepal"
             />
 
@@ -417,7 +441,8 @@ export default function WorkspaceSettingsCard() {
               type="text"
               value={timeZone}
               onChange={(e) => setTimeZone(e.target.value)}
-              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition"
+              disabled={!canManage}
+              className="w-full rounded-lg border border-border bg-canvas px-3 py-2.5 text-xs outline-none focus:border-copper transition disabled:opacity-60 disabled:cursor-not-allowed"
               placeholder="Asia/Kathmandu"
             />
 
@@ -449,48 +474,50 @@ export default function WorkspaceSettingsCard() {
 
       {/* ── SAVE FOOTER ── */}
 
-      <div className="rounded-2xl border border-border bg-surface shadow-sm px-5 py-4">
+      {canManage && (
+        <div className="rounded-2xl border border-border bg-surface shadow-sm px-5 py-4">
 
-        <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
 
-          <div>
+            <div>
 
-            <p className="text-xs font-semibold">
-              Save Changes
-            </p>
+              <p className="text-xs font-semibold">
+                Save Changes
+              </p>
 
-            <p className="text-[11px] text-ink-muted mt-0.5">
-              Changes will be applied immediately across your workspace.
-            </p>
+              <p className="text-[11px] text-ink-muted mt-0.5">
+                Changes will be applied immediately across your workspace.
+              </p>
+
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center gap-2 rounded-lg bg-copper px-5 py-2 text-xs font-medium text-white hover:bg-copper/90 transition disabled:opacity-60"
+            >
+              {saving ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  Saving...
+                </>
+              ) : saved ? (
+                <>
+                  <CheckCircle2 size={13} />
+                  Saved ✓
+                </>
+              ) : (
+                <>
+                  <Save size={13} />
+                  Save Changes
+                </>
+              )}
+            </button>
 
           </div>
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-copper px-5 py-2 text-xs font-medium text-white hover:bg-copper/90 transition disabled:opacity-60"
-          >
-            {saving ? (
-              <>
-                <Loader2 size={13} className="animate-spin" />
-                Saving...
-              </>
-            ) : saved ? (
-              <>
-                <CheckCircle2 size={13} />
-                Saved ✓
-              </>
-            ) : (
-              <>
-                <Save size={13} />
-                Save Changes
-              </>
-            )}
-          </button>
-
         </div>
-
-      </div>
+      )}
 
     </form>
   );

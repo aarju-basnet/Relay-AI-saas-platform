@@ -189,7 +189,7 @@ export async function sendTeamInviteEmail(
   businessName: string,
   token: string
 ): Promise<void> {
-  const link = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password?token=${token}`;
+  const link = `${process.env.CLIENT_URL || "http://localhost:5173"}/reset-password?token=${token}&invite=true`;
 
   const html = renderEmailTemplate({
     preheader: `${inviterName} invited you to join ${businessName} on Relay.`,

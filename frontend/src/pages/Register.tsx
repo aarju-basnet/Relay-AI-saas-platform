@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { Logo } from "@/components/Logo";
-import { Eye, EyeOff, Check, X } from "lucide-react";
+import { Eye, EyeOff, Check, X , Loader2 } from "lucide-react";
 
 export default function Register() {
   const [businessName, setBusinessName] = useState("");
@@ -199,15 +199,34 @@ navigate("/select-workspace");
               </label>
             </div>
 
-            <button
-              type="submit"
-              disabled={submitting || !agreed || !isPasswordValid}
-              className={`btn-primary w-full py-2 text-sm transition-opacity ${
-                !agreed || !isPasswordValid ? "opacity-50 cursor-not-allowed" : ""
-              }`}
-            >
-              {submitting ? "Creating account…" : "Create account"}
-            </button>
+          // before
+<button
+  type="submit"
+  disabled={submitting || !agreed || !isPasswordValid}
+  className={`btn-primary w-full py-2 text-sm transition-opacity ${
+    !agreed || !isPasswordValid ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {submitting ? "Creating account…" : "Create account"}
+</button>
+
+// after
+<button
+  type="submit"
+  disabled={submitting || !agreed || !isPasswordValid}
+  className={`btn-primary w-full py-2 text-sm transition-opacity flex items-center justify-center gap-2 ${
+    !agreed || !isPasswordValid ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+>
+  {submitting ? (
+    <>
+      <Loader2 size={14} className="animate-spin" />
+      Creating account…
+    </>
+  ) : (
+    "Create account"
+  )}
+</button>
           </form>
 
           <div className="flex items-center gap-3 my-3">

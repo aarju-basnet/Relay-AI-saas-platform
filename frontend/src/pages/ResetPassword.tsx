@@ -2,10 +2,12 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, ApiError } from "@/lib/api";
 import { Logo } from "@/components/Logo";
+import { Loader2 } from "lucide-react";
 
 export default function ResetPassword() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
+  const isInvite = searchParams.get("invite") === "true";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -43,31 +45,40 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-white">
+    <div className="min-h-screen flex items-center justify-center px-4 py-4 bg-white">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <div className="inline-flex mb-6">
+        <div className="mb-4 text-center">
+          <div className="inline-flex mb-3">
             <Logo />
           </div>
-          <h1 className="text-2xl font-semibold">Choose a new password</h1>
+          <h1 className="text-[23px] font-semibold leading-tight">
+            {isInvite ? "Accept your invite" : "Choose a new password"}
+          </h1>
+          <p className="text-ink-muted text-xs mt-0.5">
+            {isInvite
+              ? "Set a password to activate your account and join your team."
+              : "Enter a new password for your account."}
+          </p>
         </div>
 
-        <div className="panel p-6">
+        <div className="panel p-5">
           {done ? (
             <div className="text-center py-2">
-              <p className="text-sm text-teal">Password updated. Redirecting to sign in…</p>
+              <p className="text-sm text-teal">
+                {isInvite ? "You're all set. Redirecting to sign in…" : "Password updated. Redirecting to sign in…"}
+              </p>
             </div>
           ) : (
             <>
               {error && (
-                <div className="mb-4 px-3 py-2.5 rounded-panel bg-danger/10 border border-danger/30 text-danger text-sm">
+                <div className="mb-3 px-3 py-2 rounded-panel bg-danger/10 border border-danger/30 text-danger text-xs">
                   {error}
                 </div>
               )}
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-3">
                 <div>
-                  <label htmlFor="password" className="block text-sm text-ink-muted mb-1.5">
-                    New password
+                  <label htmlFor="password" className="block text-xs text-ink-muted mb-1">
+                    {isInvite ? "Create a password" : "New password"}
                   </label>
                   <input
                     id="password"
@@ -76,12 +87,12 @@ export default function ResetPassword() {
                     minLength={8}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="input-field"
+                    className="input-field text-sm py-1.5"
                     placeholder="At least 8 characters"
                   />
                 </div>
                 <div>
-                  <label htmlFor="confirmPassword" className="block text-sm text-ink-muted mb-1.5">
+                  <label htmlFor="confirmPassword" className="block text-xs text-ink-muted mb-1">
                     Confirm password
                   </label>
                   <input
@@ -91,19 +102,42 @@ export default function ResetPassword() {
                     minLength={8}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="input-field"
-                    placeholder="Repeat your new password"
+                    className="input-field text-sm py-1.5"
+                    placeholder="Repeat your password"
                   />
                 </div>
-                <button type="submit" disabled={submitting} className="btn-primary w-full">
-                  {submitting ? "Updating…" : "Update password"}
-                </button>
+             // before
+<button
+  type="submit"
+  disabled={submitting}
+  className="btn-primary w-full py-2 text-sm transition-opacity"
+>
+  {submitting ? "Setting up…" : isInvite ? "Accept invite & set password" : "Update password"}
+</button>
+
+// after
+<button
+  type="submit"
+  disabled={submitting}
+  className="btn-primary w-full py-2 text-sm transition-opacity flex items-center justify-center gap-2"
+>
+  {submitting ? (
+    <>
+      <Loader2 size={14} className="animate-spin" />
+      Setting up…
+    </>
+  ) : isInvite ? (
+    "Accept invite & set password"
+  ) : (
+    "Update password"
+  )}
+</button>
               </form>
             </>
           )}
         </div>
 
-        <p className="text-center text-sm text-ink-muted mt-6">
+        <p className="text-center text-xs text-ink mt-4">
           <Link to="/login" className="text-copper hover:text-copper-bright font-medium">
             Back to sign in
           </Link>

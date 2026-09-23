@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { Logo } from "@/components/Logo";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -98,9 +98,26 @@ navigate("/select-workspace");
               </div>
             </div>
 
-            <button type="submit" disabled={submitting} className="btn-primary w-full py-2 text-sm">
-              {submitting ? "Signing in…" : "Sign in"}
-            </button>
+         // before
+<button type="submit" disabled={submitting} className="btn-primary w-full py-2 text-sm">
+  {submitting ? "Signing in…" : "Sign in"}
+</button>
+
+// after
+<button
+  type="submit"
+  disabled={submitting}
+  className="btn-primary w-full py-2 text-sm flex items-center justify-center gap-2"
+>
+  {submitting ? (
+    <>
+      <Loader2 size={14} className="animate-spin" />
+      Signing in…
+    </>
+  ) : (
+    "Sign in"
+  )}
+</button>
           </form>
 
           <div className="flex items-center gap-3 my-3">

@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Loader2,
   HelpCircle,
+  Lock,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -29,6 +30,8 @@ export default function BillingSetting() {
   } | null>(null);
   const [payError, setPayError] = useState<string | null>(null);
 
+  const isOwner = activeWorkspace?.role === "OWNER";
+
   useEffect(() => {
     if (searchParams.get("payment") === "failed") {
       setPayError("Payment didn't complete. Please try again.");
@@ -36,17 +39,20 @@ export default function BillingSetting() {
   }, [searchParams]);
 
   function upgrade(interval: "month" | "year") {
-  if (interval === "month") setLoadingMonthly(true);
-  else setLoadingYearly(true);
-  navigate("/demo-checkout", { state: { interval } });
-}
+    if (!isOwner) return;
+    if (interval === "month") setLoadingMonthly(true);
+    else setLoadingYearly(true);
+    navigate("/demo-checkout", { state: { interval } });
+  }
 
-function manageBilling() {
-  setOpeningPortal(true);
-  navigate("/demo-billing");
-}
+  function manageBilling() {
+    if (!isOwner) return;
+    setOpeningPortal(true);
+    navigate("/demo-billing");
+  }
 
   async function handlePayWithEsewa(interval: "month" | "year") {
+    if (!isOwner) return;
     setPayError(null);
     setPayingWith("esewa");
     try {
@@ -73,6 +79,15 @@ function manageBilling() {
           </p>
         </div>
       </div>
+
+      {!isOwner && (
+        <div className="rounded-xl border border-border bg-canvas px-4 py-3 flex items-center gap-2">
+          <Lock size={14} className="text-ink-faint" />
+          <p className="text-xs text-ink-muted">
+            Only the workspace owner can manage billing. You can view the current plan below.
+          </p>
+        </div>
+      )}
 
       {payError && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-xs text-red-600">
@@ -114,7 +129,7 @@ function manageBilling() {
             <div>
               <p className="text-[10px] uppercase text-ink-faint">Workspace</p>
               <p className="mt-1 text-xs font-semibold">
-                 {activeWorkspace?.name ?? "No Workspace"}
+                {activeWorkspace?.name ?? "No Workspace"}
               </p>
             </div>
           </div>
@@ -133,93 +148,93 @@ function manageBilling() {
                 </div>
               </div>
 
-              {/* REAL PAYMENT — eSewa */}
+              {isOwner && (
+                <>
+                  <div className="mt-4">
+                    <p className="text-[10px] uppercase text-ink-faint mb-2">
+                      Choose billing cycle
+                    </p>
 
-              <div className="mt-4">
-                <p className="text-[10px] uppercase text-ink-faint mb-2">
-                  Choose billing cycle
-                </p>
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInterval("month")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-left transition ${
+                          selectedInterval === "month"
+                            ? "border-copper bg-copper/5"
+                            : "border-border hover:bg-canvas"
+                        }`}
+                      >
+                        <p className="text-[10px] font-semibold">Monthly</p>
+                        <p className="text-xs font-semibold mt-0.5">NPR 999</p>
+                        <p className="text-[10px] text-ink-faint mt-0.5">per month</p>
+                      </button>
 
-                <div className="flex gap-2 mb-3">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInterval("month")}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-left transition ${
-                      selectedInterval === "month"
-                        ? "border-copper bg-copper/5"
-                        : "border-border hover:bg-canvas"
-                    }`}
-                  >
-                    <p className="text-[10px] font-semibold">Monthly</p>
-                    <p className="text-xs font-semibold mt-0.5">NPR 999</p>
-                    <p className="text-[10px] text-ink-faint mt-0.5">per month</p>
-                  </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedInterval("year")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-left transition relative ${
+                          selectedInterval === "year"
+                            ? "border-copper bg-copper/5"
+                            : "border-border hover:bg-canvas"
+                        }`}
+                      >
+                        <span className="absolute top-1.5 right-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
+                          Save 17%
+                        </span>
+                        <p className="text-[10px] font-semibold">Yearly</p>
+                        <p className="text-xs font-semibold mt-0.5">NPR 9,999</p>
+                        <p className="text-[10px] text-ink-faint mt-0.5">per year</p>
+                      </button>
+                    </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setSelectedInterval("year")}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-left transition relative ${
-                      selectedInterval === "year"
-                        ? "border-copper bg-copper/5"
-                        : "border-border hover:bg-canvas"
-                    }`}
-                  >
-                    <span className="absolute top-1.5 right-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[9px] font-semibold text-green-700">
-                      Save 17%
-                    </span>
-                    <p className="text-[10px] font-semibold">Yearly</p>
-                    <p className="text-xs font-semibold mt-0.5">NPR 9,999</p>
-                    <p className="text-[10px] text-ink-faint mt-0.5">per year</p>
-                  </button>
-                </div>
+                    <button
+                      onClick={() => handlePayWithEsewa(selectedInterval)}
+                      disabled={payingWith !== null}
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#60BB46] px-4 py-2 text-[11px] font-medium text-white hover:opacity-90 transition disabled:opacity-60"
+                    >
+                      {payingWith === "esewa" ? "Redirecting…" : "Pay with eSewa"}
+                    </button>
+                  </div>
 
-                <button
-                  onClick={() => handlePayWithEsewa(selectedInterval)}
-                  disabled={payingWith !== null}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#60BB46] px-4 py-2 text-[11px] font-medium text-white hover:opacity-90 transition disabled:opacity-60"
-                >
-                  {payingWith === "esewa" ? "Redirecting…" : "Pay with eSewa"}
-                </button>
-              </div>
+                  <div className="mt-4 pt-4 border-t border-copper/10">
+                    <p className="text-[10px] uppercase text-ink-faint mb-2">
+                      Or use the demo checkout
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => upgrade("month")}
+                        disabled={loadingMonthly}
+                        className="rounded-lg bg-copper px-4 py-2 text-[11px] font-medium text-white transition hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {loadingMonthly ? (
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 size={12} className="animate-spin" />
+                            Redirecting...
+                          </span>
+                        ) : (
+                          "Upgrade Monthly"
+                        )}
+                      </button>
 
-              {/* DEMO FALLBACK */}
-
-              <div className="mt-4 pt-4 border-t border-copper/10">
-                <p className="text-[10px] uppercase text-ink-faint mb-2">
-                  Or use the demo checkout
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => upgrade("month")}
-                    disabled={loadingMonthly}
-                    className="rounded-lg bg-copper px-4 py-2 text-[11px] font-medium text-white transition hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loadingMonthly ? (
-                      <span className="flex items-center gap-1.5">
-                        <Loader2 size={12} className="animate-spin" />
-                        Redirecting...
-                      </span>
-                    ) : (
-                      "Upgrade Monthly"
-                    )}
-                  </button>
-
-                  <button
-                    onClick={() => upgrade("year")}
-                    disabled={loadingYearly}
-                    className="rounded-lg border border-border px-4 py-2 text-[11px] transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loadingYearly ? (
-                      <span className="flex items-center gap-1.5">
-                        <Loader2 size={12} className="animate-spin" />
-                        Redirecting...
-                      </span>
-                    ) : (
-                      "Upgrade Yearly"
-                    )}
-                  </button>
-                </div>
-              </div>
+                      <button
+                        onClick={() => upgrade("year")}
+                        disabled={loadingYearly}
+                        className="rounded-lg border border-border px-4 py-2 text-[11px] transition hover:bg-canvas disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {loadingYearly ? (
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 size={12} className="animate-spin" />
+                            Redirecting...
+                          </span>
+                        ) : (
+                          "Upgrade Yearly"
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           ) : (
@@ -246,74 +261,60 @@ function manageBilling() {
 
       {/* MANAGE SUBSCRIPTION */}
 
-      <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
+      {isOwner && (
+        <div className="rounded-2xl border border-border bg-surface shadow-sm overflow-hidden">
 
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div className="flex items-center gap-2">
-            <CreditCard size={16} className="text-copper" />
-            <h2 className="text-sm font-semibold">Subscription Management</h2>
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <div className="flex items-center gap-2">
+              <CreditCard size={16} className="text-copper" />
+              <h2 className="text-sm font-semibold">Subscription Management</h2>
+            </div>
           </div>
-        </div>
 
-        <div className="p-5">
-          <p className="text-[11px] leading-5 text-ink-muted">
-            Manage your billing, invoices, payment method and subscription from
-            the demo billing portal.
-          </p>
+          <div className="p-5">
+            <p className="text-[11px] leading-5 text-ink-muted">
+              Manage your billing, invoices, payment method and subscription from
+              the demo billing portal.
+            </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              onClick={manageBilling}
-              disabled={openingPortal || user?.plan !== "PRO"}
-              className="rounded-lg bg-copper px-4 py-2 text-[11px] font-medium text-white transition hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {openingPortal ? (
-                <span className="flex items-center gap-1.5">
-                  <Loader2 size={12} className="animate-spin" />
-                  Opening...
-                </span>
-              ) : (
-                "Open Billing Portal"
-              )}
-            </button>
-// before
-<button
-  onClick={() => navigate("/demo-billing")}
-  disabled={cancelling || user?.plan !== "PRO"}
-  className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
->
-  {cancelling ? (
-    <span className="flex items-center gap-1.5">
-      <Loader2 size={12} className="animate-spin" />
-      Cancelling...
-    </span>
-  ) : (
-    "Cancel Subscription"
-  )}
-</button>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={manageBilling}
+                disabled={openingPortal || user?.plan !== "PRO"}
+                className="rounded-lg bg-copper px-4 py-2 text-[11px] font-medium text-white transition hover:bg-copper/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {openingPortal ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin" />
+                    Opening...
+                  </span>
+                ) : (
+                  "Open Billing Portal"
+                )}
+              </button>
 
-// after
-<button
-  onClick={() => {
-    setCancelling(true);
-    navigate("/demo-billing");
-  }}
-  disabled={cancelling || user?.plan !== "PRO"}
-  className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
->
-  {cancelling ? (
-    <span className="flex items-center gap-1.5">
-      <Loader2 size={12} className="animate-spin" />
-      Cancelling...
-    </span>
-  ) : (
-    "Cancel Subscription"
-  )}
-</button>
+              <button
+                onClick={() => {
+                  setCancelling(true);
+                  navigate("/demo-billing");
+                }}
+                disabled={cancelling || user?.plan !== "PRO"}
+                className="rounded-lg border border-red-300 px-4 py-2 text-[11px] font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {cancelling ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 size={12} className="animate-spin" />
+                    Cancelling...
+                  </span>
+                ) : (
+                  "Cancel Subscription"
+                )}
+              </button>
+            </div>
           </div>
-        </div>
 
-      </div>
+        </div>
+      )}
 
       {/* BILLING FAQ */}
 

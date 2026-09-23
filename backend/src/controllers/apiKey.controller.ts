@@ -6,6 +6,8 @@ import { AuthRequest } from '@/middleware/auth';
 import { getMembership } from "@/utils/organization";
 import { canManageApiKeys } from "../utils/permissions";
 
+
+
 export async function createApiKey(
   req: AuthRequest,
   res: Response
@@ -14,10 +16,7 @@ export async function createApiKey(
     const { organizationId, name, type } = req.body;
 
     if (!req.auth) {
-      return res.status(401).json({
-        success: false,
-        message: "Unauthorized.",
-      });
+      return res.status(401).json({ success: false, message: "Unauthorized." });
     }
 
     const userId = req.auth.userId;
@@ -38,15 +37,19 @@ export async function createApiKey(
       });
     }
 
+    if (!canManageApiKeys(membership.role)) {
+      return res.status(403).json({
+        success: false,
+        message: "Only owners and admins can create API keys.",
+      });
+    }
+
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
     });
 
     if (!organization) {
-      return res.status(404).json({
-        success: false,
-        message: "Organization not found.",
-      });
+      return res.status(404).json({ success: false, message: "Organization not found." });
     }
 
     if (type === "ASSISTANT" && organization.plan === "FREE") {
@@ -61,14 +64,7 @@ export async function createApiKey(
     const prefix = getPrefix(apiKey);
 
     await prisma.apiKey.create({
-      data: {
-        name,
-        prefix,
-        hashedKey,
-        type,
-        organizationId,
-        createdById: userId,
-      },
+      data: { name, prefix, hashedKey, type, organizationId, createdById: userId },
     });
 
     return res.status(201).json({
@@ -79,10 +75,7 @@ export async function createApiKey(
 
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create API Key.",
-    });
+    return res.status(500).json({ success: false, message: "Failed to create API Key." });
   }
 }
 

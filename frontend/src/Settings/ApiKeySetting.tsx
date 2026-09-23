@@ -38,13 +38,14 @@ interface ApiKey {
 // production backend, since it runs on THEIR site, not yours.
 const WIDGET_API_BASE_URL =
   import.meta.env.VITE_WIDGET_API_URL;
+  const API_URL = import.meta.env.VITE_API_URL;
 
 function buildEmbedSnippet(key: string): string {
   return `<link rel="stylesheet" href="${WIDGET_API_BASE_URL}/widget.css" />
 <script
   src="${WIDGET_API_BASE_URL}/widget.js"
   data-api-key="${key}"
-  data-api-base-url="${WIDGET_API_BASE_URL}"
+  data-api-base-url="${API_URL}"
 ></script>`;
 }
 

@@ -22,6 +22,8 @@ import {
   Calendar,
   FileText,
   Sparkles,
+  CheckCircle2,
+  Copy
 } from "lucide-react";
 
 interface DashboardAnalytics {
@@ -80,6 +82,31 @@ function buildSmoothPath(points: { x: number; y: number }[]): string {
     d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
   }
   return d;
+}
+
+function CopySnippet({ code, id, copiedId, onCopy }: {
+  code: string;
+  id: string;
+  copiedId: string | null;
+  onCopy: (value: string, id: string) => void;
+}) {
+  return (
+    <div className="relative mt-2 rounded-lg border border-white/10 bg-[#0d0e12] p-3">
+      <button
+        onClick={() => onCopy(code, id)}
+        className="absolute top-2 right-2 rounded-md border border-white/10 p-1 hover:bg-white/10 transition"
+      >
+        {copiedId === id ? (
+          <CheckCircle2 size={12} className="text-green-400" />
+        ) : (
+          <Copy size={12} className="text-white/60" />
+        )}
+      </button>
+      <pre className="text-green-300 text-[10px] leading-5 overflow-x-auto pr-7">
+        {code}
+      </pre>
+    </div>
+  );
 }
 
 function ActivityChart({ timeline }: { timeline: AnalyticsTimelineItem[] }) {
@@ -208,6 +235,13 @@ export default function Analytics() {
   const [error, setError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<AnalyticsTimelineItem[]>([]);
   const [aiSummary, setAiSummary] = useState<AnalyticsAISummary | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+function handleCopy(value: string, id: string) {
+  navigator.clipboard.writeText(value);
+  setCopiedId(id);
+  setTimeout(() => setCopiedId(null), 2000);
+}
 
   const [selectedDate, setSelectedDate] = useState(todayString());
   const [timelineLoading, setTimelineLoading] = useState(false);
@@ -367,32 +401,108 @@ export default function Analytics() {
                 </p>
 
                 {data.customEvents.length === 0 ? (
-                  <div className="text-xs text-ink-faint py-2">
-                    <p>No custom events reported yet.</p>
-                    <p className="mt-2 leading-relaxed">
-                      Relay tracks page views and chat activity automatically. To also see
-                      things like logins or signups here, add one line to your own code
-                      right after that action happens:
-                    </p>
-                    <pre className="mt-2 rounded-lg bg-[#0d0e12] text-green-300 text-[10px] p-3 overflow-x-auto">
-{`window.Relay.track("login");`}
-                    </pre>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    {data.customEvents.map((c) => (
-                      <div
-                        key={c.eventName}
-                        className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none"
-                      >
-                        <span className="text-ink-muted">{capitalize(c.eventName)}</span>
-                        <span className="font-medium text-ink tabular-nums">
-                          {c.count.toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+  <div className="text-xs text-ink-faint py-2">
+    <p className="text-ink-muted">No custom events reported yet.</p>
+    <p className="mt-2 leading-relaxed">
+      Relay tracks page views and chat activity automatically. Logins,
+      signups, and logouts happen in <em>your</em> app's own code, so
+      Relay can't see them by itself — add one line right after each
+      action succeeds, and it'll show up here.
+    </p>
+
+    <div className="mt-4 space-y-4">
+      <div>
+        <p className="text-[11px] font-medium text-ink-muted mb-1">
+          After a successful login
+        </p>
+        <CopySnippet
+          id="track-login"
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          code={`window.Relay.track("login");`}
+        />
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium text-ink-muted mb-1">
+          After a successful signup
+        </p>
+        <CopySnippet
+          id="track-signup"
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          code={`window.Relay.track("signup", { plan: "free" });`}
+        />
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium text-ink-muted mb-1">
+          After a logout
+        </p>
+        <CopySnippet
+          id="track-logout"
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          code={`window.Relay.track("logout");`}
+        />
+      </div>
+    </div>
+
+    <div className="mt-4 pt-4 border-t border-border/50 space-y-3">
+      <div>
+        <p className="text-[11px] font-medium text-ink-muted mb-1">
+          React / Next.js / MERN apps
+        </p>
+        <CopySnippet
+          id="track-react-example"
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          code={`// e.g. inside your login handler, after the API call succeeds
+async function handleLogin(email, password) {
+  const res = await api.login(email, password);
+  window.Relay?.track("login");
+  navigate("/dashboard");
+}`}
+        />
+      </div>
+
+      <div>
+        <p className="text-[11px] font-medium text-ink-muted mb-1">
+          Plain HTML / vanilla JS sites
+        </p>
+        <CopySnippet
+          id="track-vanilla-example"
+          copiedId={copiedId}
+          onCopy={handleCopy}
+          code={`document.querySelector("#loginForm").addEventListener("submit", () => {
+  // after your own login logic succeeds
+  window.Relay.track("login");
+});`}
+        />
+      </div>
+
+      <p className="text-[11px] text-ink-faint leading-relaxed">
+        Use <code className="font-mono">window.Relay?.track(...)</code> with
+        the optional <code className="font-mono">?.</code> if the widget
+        might not have loaded yet when this code runs.
+      </p>
+    </div>
+  </div>
+) : (
+  <div className="space-y-2.5">
+    {data.customEvents.map((c) => (
+      <div
+        key={c.eventName}
+        className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none"
+      >
+        <span className="text-ink-muted">{capitalize(c.eventName)}</span>
+        <span className="font-medium text-ink tabular-nums">
+          {c.count.toLocaleString()}
+        </span>
+      </div>
+    ))}
+  </div>
+)}
               </div>
             </div>
 

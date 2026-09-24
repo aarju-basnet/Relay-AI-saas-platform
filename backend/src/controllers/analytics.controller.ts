@@ -25,6 +25,28 @@ export async function createAnalyticsEvent(
       });
     }
 
+    let finalMetadata = metadata;
+
+    if (event === "CUSTOM") {
+      const eventName = metadata?.eventName;
+
+      if (typeof eventName !== "string" || !eventName.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "metadata.eventName is required for CUSTOM events.",
+        });
+      }
+
+      if (eventName.length > 64) {
+        return res.status(400).json({
+          success: false,
+          message: "eventName must be 64 characters or fewer.",
+        });
+      }
+
+      finalMetadata = { ...metadata, eventName: eventName.trim().toLowerCase() };
+    }
+
     if (!req.organization) {
       return res.status(401).json({
         success: false,
@@ -34,28 +56,24 @@ export async function createAnalyticsEvent(
 
     const organizationId = req.organization.id;
 
-    // Check BEFORE creating the new event, so this only ever fires once -
-    // on the very first analytics event this organization has ever received.
     const hadPriorEvents = await prisma.analyticsEvent.findFirst({
       where: { organizationId },
       select: { id: true },
     });
 
     const analyticsEvent = await prisma.analyticsEvent.create({
-  data: {
-    organizationId,
-    visitorId,
-    sessionId,
-    event,
-    page,
-    metadata,
-    keySource: req.apiKeyType ?? "ANALYTICS",
-  },
-});
+      data: {
+        organizationId,
+        visitorId,
+        sessionId,
+        event,
+        page,
+        metadata: finalMetadata,
+        keySource: req.apiKeyType ?? "ANALYTICS",
+      },
+    });
 
     if (!hadPriorEvents) {
-      // Don't let this block the widget's response - the visitor's event
-      // was already recorded successfully either way.
       prisma.organization
         .update({
           where: { id: organizationId },

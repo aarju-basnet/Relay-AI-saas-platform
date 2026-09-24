@@ -20,8 +20,8 @@ export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
   return result.data;
 }
 
-export async function getAnalyticsTimeline(): Promise<AnalyticsTimelineItem[]> {
-  const result = await api.getAnalyticsTimeline();
+export async function getAnalyticsTimeline(date?: string): Promise<AnalyticsTimelineItem[]> {
+  const result = await api.getAnalyticsTimeline(date);
   return result.data;
 }
 

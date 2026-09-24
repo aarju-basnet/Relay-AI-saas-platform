@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   getDashboardAnalytics,
@@ -18,6 +18,10 @@ import {
   UserPlus,
   ShoppingCart,
   Bot,
+  Loader2,
+  Calendar,
+  FileText,
+  Sparkles,
 } from "lucide-react";
 
 interface DashboardAnalytics {
@@ -30,6 +34,172 @@ interface DashboardAnalytics {
   messagesReceived: number;
   leads: number;
   purchases: number;
+  topPages: { page: string; views: number }[];
+  customEvents: { eventName: string; count: number }[];
+}
+
+function todayString(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function formatSelectedDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatHour(hour: number): string {
+  const period = hour < 12 ? "AM" : "PM";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h} ${period}`;
+}
+
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// ---------- Smooth line/area chart, YouTube-Studio style ----------
+
+function buildSmoothPath(points: { x: number; y: number }[]): string {
+  if (points.length < 2) return "";
+  let d = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i === 0 ? i : i - 1];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+  }
+  return d;
+}
+
+function ActivityChart({ timeline }: { timeline: AnalyticsTimelineItem[] }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+
+  const width = 700;
+  const height = 180;
+  const padTop = 12;
+  const padBottom = 24;
+  const chartHeight = height - padTop - padBottom;
+
+  const totals = timeline.map(
+    (item) => item.visitors + item.pageViews + item.clicks + item.chats + item.messages
+  );
+  const maxValue = Math.max(...totals, 1);
+
+  const points = totals.map((total, i) => ({
+    x: (i / (totals.length - 1)) * width,
+    y: padTop + chartHeight - (total / maxValue) * chartHeight,
+  }));
+
+  const linePath = buildSmoothPath(points);
+  const areaPath =
+    linePath +
+    ` L ${points[points.length - 1].x} ${height - padBottom} L ${points[0].x} ${height - padBottom} Z`;
+
+  function handleMouseMove(e: React.MouseEvent<SVGSVGElement>) {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    const relativeX = ((e.clientX - rect.left) / rect.width) * width;
+    const index = Math.round((relativeX / width) * (points.length - 1));
+    setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
+  }
+
+  const hovered = hoverIndex !== null ? points[hoverIndex] : null;
+  const hoveredTotal = hoverIndex !== null ? totals[hoverIndex] : null;
+
+  const labelHours = [0, 6, 12, 18, 23];
+
+  return (
+    <div className="relative">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-44 overflow-visible cursor-crosshair"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHoverIndex(null)}
+      >
+        <defs>
+          <linearGradient id="activityFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--color-copper)" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="var(--color-copper)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {[0.25, 0.5, 0.75].map((f) => (
+          <line
+            key={f}
+            x1={0}
+            x2={width}
+            y1={padTop + chartHeight * f}
+            y2={padTop + chartHeight * f}
+            stroke="var(--color-border)"
+            strokeWidth={1}
+          />
+        ))}
+
+        <path d={areaPath} fill="url(#activityFill)" />
+        <path d={linePath} fill="none" stroke="var(--color-copper)" strokeWidth={2} />
+
+        {hovered && (
+          <>
+            <line
+              x1={hovered.x}
+              x2={hovered.x}
+              y1={padTop}
+              y2={height - padBottom}
+              stroke="var(--color-border-strong)"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+            <circle cx={hovered.x} cy={hovered.y} r={4} fill="var(--color-copper)" />
+          </>
+        )}
+
+        {labelHours.map((h) => (
+          <text
+            key={h}
+            x={(h / (totals.length - 1)) * width}
+            y={height - 6}
+            textAnchor={h === 0 ? "start" : h === 23 ? "end" : "middle"}
+            fontSize={10}
+            fill="var(--color-ink-faint)"
+          >
+            {formatHour(h)}
+          </text>
+        ))}
+      </svg>
+
+      {hovered && hoveredTotal !== null && hoverIndex !== null && (
+        <div
+          className="absolute top-0 pointer-events-none rounded-lg border border-border bg-surface px-3 py-2 shadow-raised text-xs -translate-x-1/2"
+          style={{
+            left: `${(hovered.x / width) * 100}%`,
+            transform:
+              hovered.x / width > 0.85
+                ? "translateX(-100%)"
+                : hovered.x / width < 0.15
+                ? "translateX(0%)"
+                : "translateX(-50%)",
+          }}
+        >
+          <p className="font-medium">{formatHour(hoverIndex)}</p>
+          <p className="text-ink-muted">{hoveredTotal.toLocaleString()} events</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Analytics() {
@@ -38,6 +208,9 @@ export default function Analytics() {
   const [error, setError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<AnalyticsTimelineItem[]>([]);
   const [aiSummary, setAiSummary] = useState<AnalyticsAISummary | null>(null);
+
+  const [selectedDate, setSelectedDate] = useState(todayString());
+  const [timelineLoading, setTimelineLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -58,6 +231,27 @@ export default function Analytics() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (selectedDate === todayString() && timeline.length > 0 && !loading) {
+      return;
+    }
+
+    setTimelineLoading(true);
+    getAnalyticsTimeline(selectedDate)
+      .then((timelineData) => setTimeline(timelineData))
+      .catch((err) => {
+        console.error(err);
+        setError("Couldn't load activity for that date.");
+      })
+      .finally(() => setTimelineLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate]);
+
+  const isToday = selectedDate === todayString();
+  const hasAnyActivity = timeline.some(
+    (x) => x.visitors + x.pageViews + x.clicks + x.chats + x.messages > 0
+  );
 
   return (
     <div className="flex flex-col h-full bg-canvas bg-white text-ink -m-6 p-6">
@@ -86,114 +280,133 @@ export default function Analytics() {
         {data && !loading && (
           <>
             {/* Analytics Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard
-                icon={Users}
-                label="Visitors"
-                value={data.visitors}
-              />
-              <StatCard
-                icon={Activity}
-                label="Sessions"
-                value={data.sessions}
-              />
-              <StatCard
-                icon={Eye}
-                label="Page views"
-                value={data.pageViews}
-              />
-              <StatCard
-                icon={MousePointerClick}
-                label="Button clicks"
-                value={data.buttonClicks}
-              />
-              <StatCard
-                icon={MessageCircle}
-                label="Chat opens"
-                value={data.chatOpened}
-              />
-              <StatCard
-                icon={MessagesSquare}
-                label="Messages sent"
-                value={data.messagesSent}
-              />
-              <StatCard
-                icon={UserPlus}
-                label="Leads"
-                value={data.leads}
-              />
-              <StatCard
-                icon={ShoppingCart}
-                label="Purchases"
-                value={data.purchases}
-              />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5">
+              <StatTile icon={Users} label="Visitors" value={data.visitors} />
+              <StatTile icon={Activity} label="Sessions" value={data.sessions} />
+              <StatTile icon={Eye} label="Page views" value={data.pageViews} />
+              <StatTile icon={MousePointerClick} label="Button clicks" value={data.buttonClicks} />
+              <StatTile icon={MessageCircle} label="Chat opens" value={data.chatOpened} />
+              <StatTile icon={MessagesSquare} label="Messages sent" value={data.messagesSent} />
+              <StatTile icon={UserPlus} label="Leads" value={data.leads} />
+              <StatTile icon={ShoppingCart} label="Purchases" value={data.purchases} />
             </div>
 
-            {/* Today's Activity Chart */}
-            <div className="bg-surface border border-border rounded-xl p-6">
-              <div className="mb-6">
-                <h2 className="font-semibold text-sm">Today's activity</h2>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Website activity by hour
-                </p>
+            {/* Activity Chart */}
+            <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+              <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+                <div>
+                  <p className="text-sm font-medium">
+                    {isToday ? "Today's activity" : formatSelectedDate(selectedDate)}
+                  </p>
+                  <p className="text-[11px] text-ink-faint mt-0.5">
+                    Website activity by hour
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <Calendar size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-faint pointer-events-none" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={todayString()}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="rounded-lg border border-border bg-canvas pl-7 pr-3 py-1.5 text-xs outline-none focus:border-copper transition"
+                  />
+                </div>
               </div>
 
-              <div className="h-48 flex items-end gap-1.5 pt-4">
-                {timeline.map((item) => {
-                  const total =
-                    item.visitors +
-                    item.pageViews +
-                    item.clicks +
-                    item.chats +
-                    item.messages;
+              {timelineLoading ? (
+                <div className="h-44 flex items-center justify-center">
+                  <Loader2 size={18} className="animate-spin text-ink-faint" />
+                </div>
+              ) : !hasAnyActivity ? (
+                <div className="h-44 flex items-center justify-center">
+                  <p className="text-xs text-ink-faint">No activity recorded on this day.</p>
+                </div>
+              ) : (
+                <ActivityChart timeline={timeline} />
+              )}
+            </div>
 
-                  const maxValue = Math.max(
-                    ...timeline.map(
-                      (x) =>
-                        x.visitors +
-                        x.pageViews +
-                        x.clicks +
-                        x.chats +
-                        x.messages
-                    ),
-                    1
-                  );
+            {/* Top Pages + Custom Events side by side */}
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <FileText size={15} className="text-copper" />
+                  <p className="text-sm font-medium">Top pages</p>
+                </div>
 
-                  const height = (total / maxValue) * 100;
-
-                  return (
-                    <div
-                      key={item.hour}
-                      className="flex-1 h-full flex flex-col justify-end items-center"
-                    >
+                {data.topPages.length === 0 ? (
+                  <p className="text-xs text-ink-faint py-4 text-center">
+                    No page views recorded today.
+                  </p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {data.topPages.map((p) => (
                       <div
-                        className="w-full max-w-8 bg-copper rounded-t-md transition-all duration-300"
-                        style={{
-                          height: `${height}%`,
-                          minHeight: total > 0 ? "4px" : "0",
-                        }}
-                        title={`${item.hour}:00 — ${total} events`}
-                      />
-                      <span className="text-[9px] text-ink-faint mt-2">
-                        {item.hour}
-                      </span>
-                    </div>
-                  );
-                })}
+                        key={p.page}
+                        className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none gap-3"
+                      >
+                        <span className="text-ink-muted truncate font-mono">{p.page}</span>
+                        <span className="font-medium text-ink tabular-nums shrink-0">
+                          {p.views.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles size={15} className="text-copper" />
+                  <p className="text-sm font-medium">Custom events</p>
+                </div>
+                <p className="text-[11px] text-ink-faint mb-4">
+                  Actions you've defined in your own code, like logins or signups.
+                </p>
+
+                {data.customEvents.length === 0 ? (
+                  <div className="text-xs text-ink-faint py-2">
+                    <p>No custom events reported yet.</p>
+                    <p className="mt-2 leading-relaxed">
+                      Relay tracks page views and chat activity automatically. To also see
+                      things like logins or signups here, add one line to your own code
+                      right after that action happens:
+                    </p>
+                    <pre className="mt-2 rounded-lg bg-[#0d0e12] text-green-300 text-[10px] p-3 overflow-x-auto">
+{`window.Relay.track("login");`}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {data.customEvents.map((c) => (
+                      <div
+                        key={c.eventName}
+                        className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none"
+                      >
+                        <span className="text-ink-muted">{capitalize(c.eventName)}</span>
+                        <span className="font-medium text-ink tabular-nums">
+                          {c.count.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* AI Summary */}
             {aiSummary && (
-              <div className="bg-surface border border-border rounded-xl p-6">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-8 w-8 rounded-lg bg-copper/10 flex items-center justify-center">
-                    <Bot size={16} className="text-copper" />
+              <div className="rounded-xl border border-teal/30 bg-teal/5 p-5 sm:p-6">
+                <div className="flex items-center gap-2 mb-2.5">
+                  <div className="h-7 w-7 rounded-lg bg-teal/10 flex items-center justify-center">
+                    <Bot size={14} className="text-teal" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-sm">Relay AI Summary</h2>
-                    <p className="text-xs text-ink-muted">
-                      Today's business insights
+                    <p className="text-sm font-medium">Relay AI Summary</p>
+                    <p className="text-[11px] text-ink-faint">
+                      {isToday ? "Today's business insights" : "Insights for this day"}
                     </p>
                   </div>
                 </div>
@@ -204,10 +417,10 @@ export default function Analytics() {
             )}
 
             {/* Detailed Metric Tables */}
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-surface border border-border rounded-xl p-6">
-                <h2 className="font-semibold text-sm mb-4">Visitor activity</h2>
-                <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-3.5">
+              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+                <p className="text-sm font-medium mb-4">Visitor activity</p>
+                <div className="space-y-2.5">
                   <MetricRow label="Visitors" value={data.visitors} />
                   <MetricRow label="Sessions" value={data.sessions} />
                   <MetricRow label="Page views" value={data.pageViews} />
@@ -215,9 +428,9 @@ export default function Analytics() {
                 </div>
               </div>
 
-              <div className="bg-surface border border-border rounded-xl p-6">
-                <h2 className="font-semibold text-sm mb-4">Engagement</h2>
-                <div className="space-y-3">
+              <div className="rounded-xl border border-border bg-surface p-5 sm:p-6">
+                <p className="text-sm font-medium mb-4">Engagement</p>
+                <div className="space-y-2.5">
                   <MetricRow label="Chat opens" value={data.chatOpened} />
                   <MetricRow label="Messages sent" value={data.messagesSent} />
                   <MetricRow label="Messages received" value={data.messagesReceived} />
@@ -233,7 +446,7 @@ export default function Analytics() {
   );
 }
 
-function StatCard({
+function StatTile({
   icon: Icon,
   label,
   value,
@@ -243,12 +456,12 @@ function StatCard({
   value: number;
 }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-5">
-      <div className="w-8 h-8 rounded-lg bg-copper/10 text-copper flex items-center justify-center mb-3">
-        <Icon size={16} />
+    <div className="rounded-xl border border-border bg-surface p-3.5">
+      <div className="flex items-center gap-1.5 text-ink-faint mb-1">
+        <Icon size={12} />
+        <p className="text-[10px] uppercase tracking-wide">{label}</p>
       </div>
-      <div className="text-xl font-semibold">{value.toLocaleString()}</div>
-      <div className="text-xs text-ink-muted mt-0.5">{label}</div>
+      <p className="text-lg sm:text-xl font-semibold tabular-nums">{value.toLocaleString()}</p>
     </div>
   );
 }
@@ -257,7 +470,7 @@ function MetricRow({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center justify-between text-xs py-1 border-b border-border/50 last:border-none">
       <span className="text-ink-muted">{label}</span>
-      <span className="font-medium text-ink">{value.toLocaleString()}</span>
+      <span className="font-medium text-ink tabular-nums">{value.toLocaleString()}</span>
     </div>
   );
 }

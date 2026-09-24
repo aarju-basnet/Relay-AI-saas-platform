@@ -146,6 +146,7 @@ enum AnalyticsEventType {
   FILE_UPLOADED
   KNOWLEDGE_FAILED
   HUMAN_HANDOFF
+  CUSTOM
 }
 
 model Payment {

@@ -2,6 +2,7 @@ import { Response } from "express";
 
 import { AuthRequest } from "@/middleware/auth";
 import { getMembershipForOrg } from "@/utils/membership";
+import { cacheAside } from "@/config/redis";
 
 import {
   generateAnalyticsSummary,
@@ -30,48 +31,36 @@ export async function getAnalyticsAISummary(
       });
     }
 
-    // -----------------------------------------
-    // Today's analytics
-    // -----------------------------------------
+    const today = new Date().toISOString().slice(0, 10);
+    const cacheKey = `ai-summary:${organizationId}:${today}`;
 
-    const startOfDay = new Date();
+    const data = await cacheAside(cacheKey, 60 * 60 * 24, async () => {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
 
-    startOfDay.setHours(
-      0,
-      0,
-      0,
-      0
-    );
+      const summary =
+        await getDashboardAnalytics(
+          organizationId,
+          startOfDay
+        );
 
-    const summary =
-      await getDashboardAnalytics(
-        organizationId,
-        startOfDay
-      );
+      const aiSummary =
+        await generateAnalyticsSummary(
+          summary,
+          {
+            provider: "RELAY",
+          }
+        );
 
-    // -----------------------------------------
-    // Relay AI summary
-    // -----------------------------------------
-
-    const aiSummary =
-      await generateAnalyticsSummary(
-        summary,
-        {
-          provider: "RELAY",
-        }
-      );
-
-    // -----------------------------------------
-    // Response
-    // -----------------------------------------
+      return {
+        analytics: summary,
+        summary: aiSummary,
+      };
+    });
 
     return res.json({
       success: true,
-
-      data: {
-        analytics: summary,
-        summary: aiSummary,
-      },
+      data,
     });
   } catch (error) {
     console.error(

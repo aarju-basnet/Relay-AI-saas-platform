@@ -45,4 +45,8 @@ export class AnalyticsTracker {
   async messageReceived() {
     return this.track(RelayEvents.MESSAGE_RECEIVED);
   }
+
+  async custom(eventName: string, metadata?: Record<string, any>) {
+    return this.track("CUSTOM", { ...metadata, eventName });
+  }
 }

@@ -156,8 +156,9 @@ export interface DashboardAnalytics {
   messagesReceived: number;
   leads: number;
   purchases: number;
+  topPages: { page: string; views: number }[];
+  customEvents: { eventName: string; count: number }[];
 }
-
 
 export interface AnalyticsTimelineItem {
   hour: number;
@@ -527,8 +528,10 @@ revokeApiKey(id: string) {
   getDashboardAnalytics: () =>
     request<{ success: boolean; data: DashboardAnalytics }>(`/api/analytics/${requireOrgId()}`),
 
-  getAnalyticsTimeline: () =>
-    request<{ success: boolean; data: AnalyticsTimelineItem[] }>(`/api/analytics/${requireOrgId()}/timeline`),
+ getAnalyticsTimeline: (date?: string) =>
+  request<{ success: boolean; data: AnalyticsTimelineItem[] }>(
+    `/api/analytics/${requireOrgId()}/timeline${date ? `?date=${date}` : ""}`
+  ),
 
   getTeamMembers: () => request<{ members: TeamMember[]; seatCap: number }>(`/api/team/${requireOrgId()}/members`),
 

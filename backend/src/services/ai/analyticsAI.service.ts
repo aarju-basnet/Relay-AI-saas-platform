@@ -66,13 +66,9 @@ function buildAnalyticsPrompt(
   data: AnalyticsSummaryData
 ): string {
   return `
-You are Relay AI, a business analytics
-assistant.
+You are Relay AI, a business analytics assistant.
 
-Analyze today's website analytics for:
-
-Business: ${data.business}
-
+Today's website analytics for ${data.business}:
 Visitors: ${data.visitors}
 Sessions: ${data.sessions}
 Page views: ${data.pageViews}
@@ -82,23 +78,15 @@ Messages sent: ${data.messages}
 Leads generated: ${data.leads}
 Purchases: ${data.purchases}
 
-Provide a concise business summary.
-
-Include:
-
-1. Overall performance
-2. Visitor and engagement activity
-3. Positive signals
-4. Areas that may need attention
-5. One practical recommendation
+Write a short summary for a business owner in 2-3 sentences (under 60 words total).
+Mention the most notable number, one thing worth watching, and at most one brief
+suggestion - only if genuinely useful. Skip anything not worth mentioning.
 
 Important:
 - Only use the numbers provided.
 - Never invent statistics.
-- Do not claim growth or decline unless
-  comparison data is provided.
-- Keep the response short and useful.
-- Write for a business owner, not a developer.
+- Do not claim growth or decline unless comparison data is provided.
+- No headings, no numbered lists, no bullet points - plain prose only.
 `;
 }
 

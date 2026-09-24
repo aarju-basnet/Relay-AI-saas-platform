@@ -98,12 +98,6 @@ navigate("/select-workspace");
               </div>
             </div>
 
-         // before
-<button type="submit" disabled={submitting} className="btn-primary w-full py-2 text-sm">
-  {submitting ? "Signing in…" : "Sign in"}
-</button>
-
-// after
 <button
   type="submit"
   disabled={submitting}

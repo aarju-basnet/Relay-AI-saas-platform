@@ -26,6 +26,9 @@ import teamChatRoutes from "@/routes/teamChat.routes";
 import knowledgeRoutes from "@/routes/knowledge.routes";
 import securityRoutes from "@/routes/security.routes";
 import notificationRoutes from "@/routes/notification.routes";
+// add to the imports section, alongside your other route imports:
+import dashboardAnalyticsRoutes from "@/routes/dashboardAnalytics.routes";
+import assistantRoutes from "@/routes/Assistant.routes";
 
 
 const app = express();
@@ -100,6 +103,8 @@ app.use("/api/team-chat", teamChatRoutes);
 app.use("/api/knowledge", knowledgeRoutes);
 app.use("/api/security", securityRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/analytics", dashboardAnalyticsRoutes);
+app.use("/api/assistant", assistantRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", redis: redis.status });

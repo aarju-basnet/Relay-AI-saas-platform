@@ -12,10 +12,12 @@ interface OpenRouterResponse {
 }
 
 const FREE_MODEL_CHAIN = [
-  "liquid/lfm-2.5-embedding-350m:free",
-  "poolside/laguna-xs-2.1:free",
+  "inclusionai/ling-3.0-flash-sante:free",
+  "qwen/qwen3.8-27b:free",
+  "dots-studio/dots-3-note-preview:free",
+  "liquid/lfm-2.5-2.6b:free",
+  "poolside/laguna-s-2.1:free",
   "cohere/north-mini-code:free",
-  "poolside/laguna-m.1:free",
   "google/gemma-4-31b-it:free",
   "openrouter/free",
 ];

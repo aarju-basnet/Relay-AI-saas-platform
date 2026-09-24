@@ -199,18 +199,6 @@ navigate("/select-workspace");
               </label>
             </div>
 
-          // before
-<button
-  type="submit"
-  disabled={submitting || !agreed || !isPasswordValid}
-  className={`btn-primary w-full py-2 text-sm transition-opacity ${
-    !agreed || !isPasswordValid ? "opacity-50 cursor-not-allowed" : ""
-  }`}
->
-  {submitting ? "Creating account…" : "Create account"}
-</button>
-
-// after
 <button
   type="submit"
   disabled={submitting || !agreed || !isPasswordValid}

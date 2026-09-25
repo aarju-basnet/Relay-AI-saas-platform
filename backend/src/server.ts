@@ -29,6 +29,7 @@ import notificationRoutes from "@/routes/notification.routes";
 // add to the imports section, alongside your other route imports:
 import dashboardAnalyticsRoutes from "@/routes/dashboardAnalytics.routes";
 import assistantRoutes from "@/routes/Assistant.routes";
+import { authLimiter, llmLimiter, contactLimiter, widgetLimiter, billingLimiter } from "@/middleware/rateLimiter";
 
 
 const app = express();
@@ -63,7 +64,7 @@ app.use(passport.initialize());
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    limit: 300,
+    limit: 100,
     standardHeaders: true,
     legacyHeaders: false,
   })
@@ -82,16 +83,16 @@ app.get("/debug-brevo-key", (req, res) => {
   });
 });
 
-app.use("/api/widget", cors(), debugLogger, widgetRoutes);
+app.use("/api/widget", cors(),widgetLimiter, debugLogger, widgetRoutes);
 
 // Global CORS restriction applied to all remaining routes below
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 
 // --- Routes ---
-app.use("/api/auth", authRoutes);
-app.use("/api/llm", llmRoutes);
-app.use("/api/billing", billingRoutes);
-app.use("/api/contact", contactRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/llm", llmLimiter, llmRoutes);
+app.use("/api/billing",billingLimiter, billingRoutes);
+app.use("/api/contact", contactLimiter, contactRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/workspace", workspaceRoutes);

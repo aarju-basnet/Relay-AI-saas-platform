@@ -12,22 +12,21 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { login } = useAuth();
-  const navigate = useNavigate();
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setSubmitting(true);
-    try {
-      await login(email, password);
-      
-navigate("/select-workspace");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
+
+async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  setError(null);
+  setSubmitting(true);
+  try {
+    await login(email, password);
+    // no navigate() here — PublicOnlyRoute redirects once `user` updates
+  } catch (err) {
+    setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+  } finally {
+    setSubmitting(false);
   }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-4 bg-white">

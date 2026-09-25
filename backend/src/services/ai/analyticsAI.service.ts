@@ -1,9 +1,6 @@
-import { generateAIResponse } from "@/services/llm.service";
-
 export interface AnalyticsSummaryData {
   business: string;
   date: string;
-
   visitors: number;
   sessions: number;
   pageViews: number;
@@ -14,131 +11,59 @@ export interface AnalyticsSummaryData {
   purchases: number;
 }
 
-export type AIProvider =
-  | "RELAY"
-  | "CUSTOM";
+export function generateRuleBasedSummary(data: AnalyticsSummaryData): string {
+  const {
+    business,
+    visitors,
+    sessions,
+    pageViews,
+    clicks,
+    chats,
+    messages,
+    leads,
+    purchases,
+  } = data;
 
-export interface AISummaryOptions {
-  provider: AIProvider;
-  apiKey?: string;
-  model?: string;
-}
-
-interface ChatMessage {
-  role:
-    | "system"
-    | "user"
-    | "assistant";
-  content: string;
-}
-
-export async function generateAnalyticsSummary(
-  data: AnalyticsSummaryData,
-  options: AISummaryOptions
-): Promise<string> {
-  const prompt =
-    buildAnalyticsPrompt(data);
-
-  if (options.provider === "RELAY") {
-    return generateWithRelayAI(prompt);
+  // No traffic at all yet
+  if (visitors === 0) {
+    return `${business} hasn't had any visitors recorded yet today. Once your widget starts receiving traffic, this summary will update automatically.`;
   }
 
-  if (options.provider === "CUSTOM") {
-    if (!options.apiKey) {
-      throw new Error(
-        "Custom AI API key is required."
-      );
-    }
+  const parts: string[] = [];
 
-    return generateWithCustomAI(
-      prompt,
-      options.apiKey,
-      options.model
-    );
+  // Opening line: visitor + page view summary
+  const visitorWord = visitors === 1 ? "visitor" : "visitors";
+  const pageWord = pageViews === 1 ? "page view" : "page views";
+  parts.push(`${business} had ${visitors} ${visitorWord} and ${pageViews} ${pageWord} today`);
+
+  // Engagement breakdown
+  const engagementBits: string[] = [];
+  if (clicks > 0) engagementBits.push(`${clicks} button click${clicks === 1 ? "" : "s"}`);
+  if (chats > 0) engagementBits.push(`${chats} chat open${chats === 1 ? "" : "s"}`);
+  if (messages > 0) engagementBits.push(`${messages} message${messages === 1 ? "" : "s"}`);
+  if (leads > 0) engagementBits.push(`${leads} lead${leads === 1 ? "" : "s"}`);
+  if (purchases > 0) engagementBits.push(`${purchases} purchase${purchases === 1 ? "" : "s"}`);
+
+  if (engagementBits.length === 0) {
+    parts.push(`, with no button clicks, chat opens, messages, leads, or purchases yet`);
+  } else {
+    parts.push(`, including ${engagementBits.join(", ")}`);
   }
 
-  throw new Error(
-    "Unsupported AI provider."
-  );
-}
+  let summary = parts.join("") + ".";
 
-function buildAnalyticsPrompt(
-  data: AnalyticsSummaryData
-): string {
-  return `
-You are Relay AI, a business analytics assistant.
+  // A light observation, only when genuinely worth mentioning
+  const pagesPerVisitor = visitors > 0 ? pageViews / visitors : 0;
 
-Today's website analytics for ${data.business}:
-Visitors: ${data.visitors}
-Sessions: ${data.sessions}
-Page views: ${data.pageViews}
-Button clicks: ${data.clicks}
-Chat opens: ${data.chats}
-Messages sent: ${data.messages}
-Leads generated: ${data.leads}
-Purchases: ${data.purchases}
-
-Write a short summary for a business owner in 2-3 sentences (under 60 words total).
-Mention the most notable number, one thing worth watching, and at most one brief
-suggestion - only if genuinely useful. Skip anything not worth mentioning.
-
-Important:
-- Only use the numbers provided.
-- Never invent statistics.
-- Do not claim growth or decline unless comparison data is provided.
-- No headings, no numbered lists, no bullet points - plain prose only.
-`;
-}
-
-async function generateWithRelayAI(
-  prompt: string
-): Promise<string> {
-  const messages: ChatMessage[] = [
-    {
-      role: "system",
-      content:
-        "You are Relay AI. You analyze business website analytics and provide concise, useful business insights.",
-    },
-    {
-      role: "user",
-      content: prompt,
-    },
-  ];
-
-  const result =
-    await generateAIResponse(messages);
-
-  return result.text;
-}
-
-async function generateWithCustomAI(
-  prompt: string,
-  apiKey: string,
-  model?: string
-): Promise<string> {
-  /*
-   * Custom AI support will be implemented
-   * separately.
-   *
-   * The API key must remain on the backend.
-   */
-
-  if (!apiKey) {
-    throw new Error(
-      "Custom AI API key is required."
-    );
+  if (visitors >= 1 && chats === 0 && messages === 0 && pageViews > 0) {
+    summary += ` No one has opened the chat widget yet — worth checking it's visible and working as expected.`;
+  } else if (leads > 0 || purchases > 0) {
+    summary += ` Visitors are converting into real leads or purchases — worth watching which pages are driving that.`;
+  } else if (pagesPerVisitor >= 3) {
+    summary += ` Visitors are browsing multiple pages per session, which is a good engagement signal.`;
+  } else if (sessions > 0 && visitors > sessions) {
+    summary += ` Some sessions may be splitting across visits — normal for early or low-traffic days.`;
   }
 
-  console.log(
-    "Custom AI model:",
-    model
-  );
-
-  // Not implemented yet.
-  // We will add BYO AI provider support
-  // after Relay AI is working.
-
-  throw new Error(
-    "Custom AI provider is not implemented yet."
-  );
+  return summary;
 }

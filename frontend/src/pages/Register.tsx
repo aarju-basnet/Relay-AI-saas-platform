@@ -26,31 +26,32 @@ export default function Register() {
   // Calculate strength score (0 to 3)
   const strengthScore = [hasMinLength, hasUppercase, hasDigit].filter(Boolean).length;
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
+ async function handleSubmit(e: FormEvent) {
+  e.preventDefault();
+  setError(null);
 
-    if (!agreed) {
-      setError("You must agree to the Terms of Service and Privacy Policy.");
-      return;
-    }
-
-    if (!isPasswordValid) {
-      setError("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-     await register(email, password, name || undefined);
-await createWorkspace(businessName);
-navigate("/select-workspace");
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  if (!agreed) {
+    setError("You must agree to the Terms of Service and Privacy Policy.");
+    return;
   }
+
+  if (!isPasswordValid) {
+    setError("Password must be at least 8 characters long and contain at least one uppercase letter and one number.");
+    return;
+  }
+
+  setSubmitting(true);
+  try {
+    await register(email, password, name || undefined);
+    await createWorkspace(businessName);
+    // no navigate() here — once activeWorkspace is set, PublicOnlyRoute
+    // redirects to /dashboard on its own
+  } catch (err) {
+    setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+  } finally {
+    setSubmitting(false);
+  }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-4 bg-white">

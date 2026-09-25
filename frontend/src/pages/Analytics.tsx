@@ -237,6 +237,8 @@ export default function Analytics() {
   const [aiSummary, setAiSummary] = useState<AnalyticsAISummary | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  
+
 function handleCopy(value: string, id: string) {
   navigator.clipboard.writeText(value);
   setCopiedId(id);
@@ -286,6 +288,54 @@ function handleCopy(value: string, id: string) {
   const hasAnyActivity = timeline.some(
     (x) => x.visitors + x.pageViews + x.clicks + x.chats + x.messages > 0
   );
+
+  const [loadedDate, setLoadedDate] = useState<string | null>(null);
+
+useEffect(() => {
+  // Initial load: today's data for everything, including the AI summary
+  Promise.all([
+    getDashboardAnalytics(),
+    getAnalyticsTimeline(),
+    getAnalyticsAISummary(),
+  ])
+    .then(([analytics, timelineData, summaryData]) => {
+      setData(analytics);
+      setTimeline(timelineData);
+      setAiSummary(summaryData);
+      setLoadedDate(todayString());
+    })
+    .catch((error) => {
+      console.error(error);
+      setError("Couldn't load analytics right now.");
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+}, []);
+
+useEffect(() => {
+  if (selectedDate === loadedDate) {
+    return;
+  }
+
+  setTimelineLoading(true);
+  Promise.all([
+    getDashboardAnalytics(selectedDate),
+    getAnalyticsTimeline(selectedDate),
+  ])
+    .then(([analytics, timelineData]) => {
+      setData(analytics);
+      setTimeline(timelineData);
+      setLoadedDate(selectedDate);
+    })
+    .catch((err) => {
+      console.error(err);
+      setError("Couldn't load activity for that date.");
+    })
+    .finally(() => setTimelineLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [selectedDate]);
+
 
   return (
     <div className="flex flex-col h-full bg-canvas bg-white text-ink -m-6 p-6">
@@ -571,7 +621,7 @@ function StatTile({
         <Icon size={12} />
         <p className="text-[10px] uppercase tracking-wide">{label}</p>
       </div>
-      <p className="text-lg sm:text-xl font-semibold tabular-nums">{value.toLocaleString()}</p>
+      <p className="text-base font-medium tabular-nums">{value.toLocaleString()}</p>
     </div>
   );
 }

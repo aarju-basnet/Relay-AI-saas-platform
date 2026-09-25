@@ -2,11 +2,8 @@ import { Response } from "express";
 
 import { AuthRequest } from "@/middleware/auth";
 import { getMembershipForOrg } from "@/utils/membership";
-import { cacheAside } from "@/config/redis";
 
-import {
-  generateAnalyticsSummary,
-} from "@/services/ai/analyticsAI.service";
+import { generateRuleBasedSummary } from "@/services/ai/analyticsAI.service";
 
 import {
   getDashboardAnalytics,
@@ -26,52 +23,33 @@ export async function getAnalyticsAISummary(
     if (!membership) {
       return res.status(403).json({
         success: false,
-        message:
-          "You don't have access to this workspace.",
+        message: "You don't have access to this workspace.",
       });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const cacheKey = `ai-summary:${organizationId}:${today}`;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-    const data = await cacheAside(cacheKey, 60 * 60 * 24, async () => {
-      const startOfDay = new Date();
-      startOfDay.setHours(0, 0, 0, 0);
+    const summary =
+      await getDashboardAnalytics(
+        organizationId,
+        startOfDay
+      );
 
-      const summary =
-        await getDashboardAnalytics(
-          organizationId,
-          startOfDay
-        );
-
-      const aiSummary =
-        await generateAnalyticsSummary(
-          summary,
-          {
-            provider: "RELAY",
-          }
-        );
-
-      return {
-        analytics: summary,
-        summary: aiSummary,
-      };
-    });
+    const generatedSummary = generateRuleBasedSummary(summary);
 
     return res.json({
       success: true,
-      data,
+      data: {
+        analytics: summary,
+        summary: generatedSummary,
+      },
     });
   } catch (error) {
-    console.error(
-      "Analytics AI summary error:",
-      error
-    );
-
+    console.error("Analytics AI summary error:", error);
     return res.status(500).json({
       success: false,
-      message:
-        "Failed to prepare analytics summary.",
+      message: "Failed to prepare analytics summary.",
     });
   }
 }

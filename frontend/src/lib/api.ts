@@ -525,8 +525,10 @@ revokeApiKey(id: string) {
     };
   }>(`/api/analytics/${requireOrgId()}/ai-summary`),
 
-  getDashboardAnalytics: () =>
-    request<{ success: boolean; data: DashboardAnalytics }>(`/api/analytics/${requireOrgId()}`),
+getDashboardAnalytics: (date?: string) =>
+  request<{ success: boolean; data: DashboardAnalytics }>(
+    `/api/analytics/${requireOrgId()}${date ? `?date=${date}` : ""}`
+  ),
 
  getAnalyticsTimeline: (date?: string) =>
   request<{ success: boolean; data: AnalyticsTimelineItem[] }>(

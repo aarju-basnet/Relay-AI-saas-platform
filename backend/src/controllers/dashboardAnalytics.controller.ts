@@ -22,14 +22,27 @@ export async function getDashboardAnalytics(
       });
     }
 
-    const startOfDay = new Date();
+    const dateParam = req.query.date as string | undefined;
+    const targetDate = dateParam ? new Date(dateParam) : new Date();
+
+    if (isNaN(targetDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid date.",
+      });
+    }
+
+    const startOfDay = new Date(targetDate);
     startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(startOfDay);
+    endOfDay.setDate(endOfDay.getDate() + 1);
 
     const events =
       await prisma.analyticsEvent.findMany({
         where: {
           organizationId,
-          createdAt: { gte: startOfDay },
+          createdAt: { gte: startOfDay, lt: endOfDay },
         },
         select: {
           visitorId: true,
@@ -62,14 +75,10 @@ export async function getDashboardAnalytics(
       .sort((a, b) => b.views - a.views)
       .slice(0, 5);
 
-    // Custom events (business-defined, e.g. login/signup/logout) - only
-    // populated if the business explicitly calls window.Relay.track(...)
-    // in their own code. Nothing here is tracked automatically.
     const customCounts = new Map<string, number>();
     for (const event of events) {
       if (event.event === "CUSTOM") {
-        const eventName =
-          (event.metadata as any)?.eventName;
+        const eventName = (event.metadata as any)?.eventName;
         if (typeof eventName === "string" && eventName) {
           customCounts.set(eventName, (customCounts.get(eventName) ?? 0) + 1);
         }

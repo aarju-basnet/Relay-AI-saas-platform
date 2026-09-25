@@ -15,8 +15,8 @@ export interface AnalyticsAISummary {
   analytics: DashboardAnalytics;
   summary: string;
 }
-export async function getDashboardAnalytics(): Promise<DashboardAnalytics> {
-  const result = await api.getDashboardAnalytics();
+export async function getDashboardAnalytics(date?: string): Promise<DashboardAnalytics> {
+  const result = await api.getDashboardAnalytics(date);
   return result.data;
 }
 

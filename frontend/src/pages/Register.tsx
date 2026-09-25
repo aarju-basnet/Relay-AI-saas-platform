@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link} from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { api, ApiError } from "@/lib/api";
 import { Logo } from "@/components/Logo";
@@ -15,7 +15,7 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const { register, createWorkspace } = useAuth();
-  const navigate = useNavigate();
+ 
 
   // Password validation checks
   const hasMinLength = password.length >= 8;

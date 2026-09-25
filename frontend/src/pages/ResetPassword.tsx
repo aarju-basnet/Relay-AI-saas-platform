@@ -106,16 +106,9 @@ export default function ResetPassword() {
                     placeholder="Repeat your password"
                   />
                 </div>
-             // before
-<button
-  type="submit"
-  disabled={submitting}
-  className="btn-primary w-full py-2 text-sm transition-opacity"
->
-  {submitting ? "Setting up…" : isInvite ? "Accept invite & set password" : "Update password"}
-</button>
+   
 
-// after
+
 <button
   type="submit"
   disabled={submitting}
